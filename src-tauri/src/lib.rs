@@ -27,6 +27,7 @@ pub fn run() {
             commands::clipboard::write_clipboard_text,
             commands::clipboard::read_clipboard_image,
             commands::clipboard::write_clipboard_image,
+            commands::window::create_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

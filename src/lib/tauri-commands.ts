@@ -7,6 +7,11 @@ export const clipboard = {
   writeImage: (base64Png: string): Promise<void> => invoke('write_clipboard_image', { base64Png }),
 }
 
+export const win = {
+  create: (title?: string): Promise<string> =>
+    invoke('create_window', { title }),
+}
+
 export const pty = {
   create: (rows: number, cols: number): Promise<string> =>
     invoke('create_pty', { rows, cols }),
