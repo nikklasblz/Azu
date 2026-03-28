@@ -10,58 +10,64 @@ interface GridCellProps {
 }
 
 const GridCell: Component<GridCellProps> = (props) => {
-  const [showMenu, setShowMenu] = createSignal(false)
+  const [hovered, setHovered] = createSignal(false)
 
-  const handleContextMenu = (e: MouseEvent) => {
-    e.preventDefault()
-    setShowMenu(!showMenu())
+  const handleSplit = (direction: 'h' | 'v') => {
+    if (direction === 'h') splitHorizontal(props.node.id)
+    else splitVertical(props.node.id)
+    if (props.onSplit) setTimeout(() => props.onSplit!(), 50)
   }
 
   return (
-    <div class="relative w-full h-full overflow-hidden" onContextMenu={handleContextMenu}>
-      <Show when={props.ptyId}>
-        {(id) => <TerminalComponent ptyId={id()} />}
-      </Show>
-      <Show when={!props.ptyId}>
-        <div class="flex items-center justify-center h-full text-text-muted">
-          <button
-            class="px-3 py-1 border border-border rounded hover:bg-surface-alt"
-            onClick={() => props.onRequestPty(props.node.id)}
-          >
-            + New Terminal
-          </button>
-        </div>
-      </Show>
-      <Show when={showMenu()}>
-        <div class="absolute top-2 right-2 bg-surface-alt border border-border rounded shadow-lg z-50 text-sm">
-          <button
-            class="block w-full px-4 py-2 text-left hover:bg-surface text-text"
-            onClick={() => {
-              splitHorizontal(props.node.id)
-              setShowMenu(false)
-              if (props.onSplit) props.onSplit()
-            }}
-          >
-            Split Right
-          </button>
-          <button
-            class="block w-full px-4 py-2 text-left hover:bg-surface text-text"
-            onClick={() => {
-              splitVertical(props.node.id)
-              setShowMenu(false)
-              if (props.onSplit) props.onSplit()
-            }}
-          >
-            Split Down
-          </button>
-          <button
-            class="block w-full px-4 py-2 text-left hover:bg-surface text-error"
-            onClick={() => { removeCell(props.node.id); setShowMenu(false) }}
-          >
-            Close
-          </button>
-        </div>
-      </Show>
+    <div
+      class="relative w-full h-full overflow-hidden flex flex-col"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Cell toolbar — visible on hover */}
+      <div
+        class="h-6 flex items-center px-2 bg-surface-alt border-b border-border shrink-0 text-xs gap-1 transition-opacity"
+        style={{ opacity: hovered() ? '1' : '0.3' }}
+      >
+        <button
+          class="px-1.5 py-0.5 rounded hover:bg-surface text-text-muted hover:text-text"
+          onClick={() => handleSplit('h')}
+          title="Split Right"
+        >
+          ⫼
+        </button>
+        <button
+          class="px-1.5 py-0.5 rounded hover:bg-surface text-text-muted hover:text-text"
+          onClick={() => handleSplit('v')}
+          title="Split Down"
+        >
+          ⊟
+        </button>
+        <div class="flex-1" />
+        <button
+          class="px-1.5 py-0.5 rounded hover:bg-surface text-text-muted hover:text-error"
+          onClick={() => removeCell(props.node.id)}
+          title="Close"
+        >
+          ✕
+        </button>
+      </div>
+      {/* Terminal or empty cell */}
+      <div class="flex-1 overflow-hidden">
+        <Show when={props.ptyId}>
+          {(id) => <TerminalComponent ptyId={id()} />}
+        </Show>
+        <Show when={!props.ptyId}>
+          <div class="flex items-center justify-center h-full text-text-muted">
+            <button
+              class="px-3 py-1 border border-border rounded hover:bg-surface-alt"
+              onClick={() => props.onRequestPty(props.node.id)}
+            >
+              + New Terminal
+            </button>
+          </div>
+        </Show>
+      </div>
     </div>
   )
 }
