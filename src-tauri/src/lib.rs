@@ -28,6 +28,10 @@ pub fn run() {
             commands::clipboard::read_clipboard_image,
             commands::clipboard::write_clipboard_image,
             commands::window::create_window,
+            commands::window::minimize_window,
+            commands::window::maximize_window,
+            commands::window::close_window,
+            commands::window::set_always_on_top,
             commands::config::save_config,
             commands::config::load_config,
         ])
