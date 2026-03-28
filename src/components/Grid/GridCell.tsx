@@ -29,8 +29,8 @@ const GridCell: Component<GridCellProps> = (props) => {
       const id = props.ptyId
       // Delay after native dialog — ConPTY needs time to restore input state
       await new Promise(r => setTimeout(r, 200))
-      // cd /d works in cmd.exe (changes drive) and PowerShell ignores /d gracefully
-      await pty.write(id, `cd /d "${folder}"`)
+      // PowerShell: cd works across drives natively
+      await pty.write(id, `cd "${folder}"`)
       await new Promise(r => setTimeout(r, 50))
       await pty.write(id, '\r')
     }
