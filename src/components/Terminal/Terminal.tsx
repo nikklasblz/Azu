@@ -71,26 +71,18 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
     resizeObserver.observe(containerRef)
 
-    // Handle Ctrl+C/V — clipboard integration
+    // Handle Ctrl+C — copy selection if text selected, otherwise send SIGINT
+    // Ctrl+V is NOT intercepted — let browser/xterm handle paste natively
+    // so that tools like Claude Code CLI can detect image pastes
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
 
-      // Ctrl+C — copy selection if text selected, otherwise send SIGINT
       if (e.ctrlKey && e.key === 'c') {
         const selection = term!.getSelection()
         if (selection) {
           clipboard.writeText(selection)
           return false
         }
-        return true
-      }
-
-      // Ctrl+V — always paste text to terminal
-      if (e.ctrlKey && e.key === 'v') {
-        clipboard.readText().then(text => {
-          if (text) pty.write(props.ptyId, text)
-        }).catch(() => {})
-        return false
       }
 
       return true
