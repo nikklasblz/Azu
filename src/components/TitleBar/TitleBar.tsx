@@ -1,4 +1,4 @@
-import { Component, createSignal } from 'solid-js'
+import { Component, createSignal, Show, For } from 'solid-js'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
@@ -6,11 +6,20 @@ import { win } from '../../lib/tauri-commands'
 
 interface TitleBarProps {
   onAddTab?: () => void
+  onLaunchAll?: (cmd: string) => void
 }
+
+const launchOptions = [
+  { label: 'Claude', cmd: 'claude' },
+  { label: 'Claude (yolo)', cmd: 'claude --dangerously-skip-permissions' },
+  { label: 'Codex', cmd: 'codex' },
+  { label: 'Codex (full-auto)', cmd: 'codex --full-auto' },
+]
 
 const TitleBar: Component<TitleBarProps> = (props) => {
   const [pinned, setPinned] = createSignal(false)
   const [opacity, setOpacity] = createSignal(100)
+  const [showLaunch, setShowLaunch] = createSignal(false)
 
   const togglePin = async () => {
     const next = !pinned()
@@ -28,6 +37,11 @@ const TitleBar: Component<TitleBarProps> = (props) => {
     }
   }
 
+  const handleLaunchAll = (cmd: string) => {
+    props.onLaunchAll?.(cmd)
+    setShowLaunch(false)
+  }
+
   return (
     <header
       class="h-9 flex items-center px-3 bg-surface-alt border-b border-border shrink-0 gap-1.5 select-none"
@@ -36,6 +50,35 @@ const TitleBar: Component<TitleBarProps> = (props) => {
       <span class="font-semibold text-accent text-xs tracking-tight mr-1" data-tauri-drag-region>Azu</span>
 
       <PresetSwitcher />
+
+      {/* Launch All — sends command to every open shell */}
+      <div class="relative"
+        onMouseLeave={() => setShowLaunch(false)}
+      >
+        <button
+          class="px-2 py-1 text-xs border border-accent/30 rounded hover:bg-accent/10 text-accent flex items-center gap-1"
+          onClick={() => setShowLaunch(!showLaunch())}
+          title="Launch CLI in all terminals"
+        >
+          <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor"><polygon points="2,1 9,5 2,9" /></svg>
+          All
+        </button>
+        <Show when={showLaunch()}>
+          <div class="absolute top-full left-0 mt-1 bg-surface-alt border border-border rounded shadow-lg z-50 min-w-52 p-1">
+            <For each={launchOptions}>
+              {(opt) => (
+                <button
+                  class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs rounded text-text hover:bg-surface"
+                  onClick={() => handleLaunchAll(opt.cmd)}
+                >
+                  <svg width="6" height="6" viewBox="0 0 10 10" fill="currentColor" class="text-accent"><polygon points="2,1 9,5 2,9" /></svg>
+                  {opt.label}
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
+      </div>
 
       <div class="flex-1" data-tauri-drag-region />
 

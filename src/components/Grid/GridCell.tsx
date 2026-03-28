@@ -15,6 +15,22 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [hovered, setHovered] = createSignal(false)
   const [editing, setEditing] = createSignal(false)
   const [showThemeMenu, setShowThemeMenu] = createSignal(false)
+  const [showLaunchMenu, setShowLaunchMenu] = createSignal(false)
+
+  const launchOptions = [
+    { label: 'Claude', cmd: 'claude' },
+    { label: 'Claude (yolo)', cmd: 'claude --dangerously-skip-permissions' },
+    { label: 'Codex', cmd: 'codex' },
+    { label: 'Codex (full-auto)', cmd: 'codex --full-auto' },
+  ]
+
+  const sendCommand = async (cmd: string) => {
+    if (!props.ptyId) return
+    await pty.write(props.ptyId, cmd)
+    await new Promise(r => setTimeout(r, 50))
+    await pty.write(props.ptyId, '\r')
+    setShowLaunchMenu(false)
+  }
 
   const handleSplit = (direction: 'h' | 'v') => {
     if (direction === 'h') splitHorizontal(props.node.id)
@@ -76,7 +92,7 @@ const GridCell: Component<GridCellProps> = (props) => {
       class="relative w-full h-full overflow-hidden flex flex-col"
       style={cellStyle()}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -120,6 +136,41 @@ const GridCell: Component<GridCellProps> = (props) => {
             <path d="M1 1h4l2 2h6v8H1V1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
           </svg>
         </button>
+
+        {/* Launch CLI */}
+        <div class="relative">
+          <button
+            class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+            style={{ color: cellTheme()?.colors.accent || 'var(--azu-accent)' }}
+            onClick={() => setShowLaunchMenu(!showLaunchMenu())}
+            title="Launch CLI"
+          >
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
+              <polygon points="2,1 9,5 2,9" />
+            </svg>
+          </button>
+          <Show when={showLaunchMenu()}>
+            <div
+              class="absolute top-full left-0 mt-1 rounded shadow-lg z-50 min-w-44 p-1"
+              style={{
+                background: cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
+                border: `1px solid ${cellTheme()?.colors.border || 'var(--azu-border)'}`,
+              }}
+            >
+              <For each={launchOptions}>
+                {(opt) => (
+                  <button
+                    class="flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs rounded hover:opacity-80"
+                    style={{ color: cellTheme()?.colors.text || 'var(--azu-text)' }}
+                    onClick={() => sendCommand(opt.cmd)}
+                  >
+                    {opt.label}
+                  </button>
+                )}
+              </For>
+            </div>
+          </Show>
+        </div>
 
         {/* Editable label / cwd display */}
         <Show when={editing()} fallback={

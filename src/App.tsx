@@ -64,6 +64,18 @@ const App: Component = () => {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, name } : t))
   }
 
+  const handleLaunchAll = async (cmd: string) => {
+    const tab = activeTab()
+    if (!tab) return
+    const ptyIds = Object.values(tab.ptyMap)
+    for (const id of ptyIds) {
+      pty.write(id, cmd)
+      await new Promise(r => setTimeout(r, 50))
+      pty.write(id, '\r')
+      await new Promise(r => setTimeout(r, 100))
+    }
+  }
+
   onMount(async () => {
     initKeybindings()
     await loadPresetsFromDisk()
@@ -73,7 +85,7 @@ const App: Component = () => {
 
   return (
     <div class="h-screen w-screen flex flex-col bg-surface text-text">
-      <TitleBar onAddTab={addTab} />
+      <TitleBar onAddTab={addTab} onLaunchAll={handleLaunchAll} />
       {/* Tab bar */}
       <div class="h-8 flex items-center bg-surface-alt border-b border-border shrink-0 overflow-x-auto">
         <For each={tabs()}>
