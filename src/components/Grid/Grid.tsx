@@ -9,6 +9,20 @@ interface GridProps {
 }
 
 const GridContainer: Component<GridProps> = (props) => {
+  // Auto-create PTYs for leaf cells that don't have one
+  const autoCreatePtys = () => {
+    const findLeaves = (node: GridNode): string[] => {
+      if (node.type === 'leaf') return [node.id]
+      return (node.children || []).flatMap(findLeaves)
+    }
+    const leaves = findLeaves(gridStore.root)
+    for (const leafId of leaves) {
+      if (!props.ptyMap[leafId]) {
+        props.onRequestPty(leafId)
+      }
+    }
+  }
+
   const renderNode = (node: GridNode) => {
     if (node.type === 'leaf') {
       return (
@@ -16,6 +30,7 @@ const GridContainer: Component<GridProps> = (props) => {
           node={node}
           ptyId={props.ptyMap[node.id]}
           onRequestPty={props.onRequestPty}
+          onSplit={autoCreatePtys}
         />
       )
     }

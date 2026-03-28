@@ -6,6 +6,7 @@ interface GridCellProps {
   node: GridNode
   ptyId?: string
   onRequestPty: (cellId: string) => void
+  onSplit?: () => void
 }
 
 const GridCell: Component<GridCellProps> = (props) => {
@@ -35,13 +36,21 @@ const GridCell: Component<GridCellProps> = (props) => {
         <div class="absolute top-2 right-2 bg-surface-alt border border-border rounded shadow-lg z-50 text-sm">
           <button
             class="block w-full px-4 py-2 text-left hover:bg-surface text-text"
-            onClick={() => { splitHorizontal(props.node.id); setShowMenu(false) }}
+            onClick={() => {
+              splitHorizontal(props.node.id)
+              setShowMenu(false)
+              if (props.onSplit) props.onSplit()
+            }}
           >
             Split Right
           </button>
           <button
             class="block w-full px-4 py-2 text-left hover:bg-surface text-text"
-            onClick={() => { splitVertical(props.node.id); setShowMenu(false) }}
+            onClick={() => {
+              splitVertical(props.node.id)
+              setShowMenu(false)
+              if (props.onSplit) props.onSplit()
+            }}
           >
             Split Down
           </button>

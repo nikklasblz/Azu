@@ -1,9 +1,10 @@
-import { Component, onMount, onCleanup } from 'solid-js'
+import { Component, onMount, onCleanup, createEffect } from 'solid-js'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { listen } from '@tauri-apps/api/event'
 import { pty, clipboard } from '../../lib/tauri-commands'
+import { themeStore } from '../../stores/theme'
 
 interface TerminalProps {
   ptyId: string
@@ -100,6 +101,20 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       resizeObserver.disconnect()
       term?.dispose()
     })
+  })
+
+  // Reactively update xterm theme when theme changes
+  createEffect(() => {
+    const activeId = themeStore.activeId
+    const theme = themeStore.themes[activeId]
+    if (term && theme) {
+      term.options.theme = {
+        background: theme.colors.terminalBg,
+        foreground: theme.colors.terminalFg,
+        cursor: theme.colors.terminalCursor,
+        selectionBackground: theme.colors.terminalSelection,
+      }
+    }
   })
 
   return <div ref={containerRef} class="w-full h-full" />
