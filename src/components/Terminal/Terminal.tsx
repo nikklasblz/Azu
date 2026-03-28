@@ -45,6 +45,9 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     }
 
     fitAddon.fit()
+    // Refit after layout settles
+    requestAnimationFrame(() => fitAddon?.fit())
+    setTimeout(() => fitAddon?.fit(), 100)
 
     // Listen for PTY output
     const unlisten = await listen<string>(`pty-output-${props.ptyId}`, (event) => {

@@ -1,4 +1,5 @@
 import { createStore } from 'solid-js/store'
+import { config } from '../lib/tauri-commands'
 
 export interface GridNode {
   id: string
@@ -98,6 +99,7 @@ export function removeCell(cellId: string) {
 export function savePreset(name: string) {
   setGridStore('presets', name, deepClone(gridStore.root))
   setGridStore('activePreset', name)
+  persistPresets()
 }
 
 export function loadPreset(name: string) {
@@ -105,6 +107,27 @@ export function loadPreset(name: string) {
   if (preset) {
     setGridStore('root', deepClone(preset))
     setGridStore('activePreset', name)
+  }
+}
+
+// Persist presets to disk so all windows share them
+function persistPresets() {
+  const data = JSON.stringify(gridStore.presets)
+  config.save('layout-presets', data).catch(() => {})
+}
+
+// Load presets from disk — call on app init
+export async function loadPresetsFromDisk() {
+  try {
+    const data = await config.load('layout-presets')
+    if (data) {
+      const presets = JSON.parse(data) as Record<string, GridNode>
+      for (const [name, node] of Object.entries(presets)) {
+        setGridStore('presets', name, node)
+      }
+    }
+  } catch {
+    // First run or corrupted — ignore
   }
 }
 

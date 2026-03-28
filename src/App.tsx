@@ -2,7 +2,7 @@ import { Component, createSignal, onMount } from 'solid-js'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
-import { gridStore } from './stores/grid'
+import { gridStore, loadPresetsFromDisk } from './stores/grid'
 import { pty } from './lib/tauri-commands'
 import { initKeybindings } from './lib/keybindings'
 import './styles/global.css'
@@ -17,6 +17,7 @@ const App: Component = () => {
 
   onMount(async () => {
     initKeybindings()
+    await loadPresetsFromDisk()
     const rootId = gridStore.root.id
     await handleRequestPty(rootId)
   })
