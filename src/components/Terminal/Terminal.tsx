@@ -71,33 +71,46 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
     resizeObserver.observe(containerRef)
 
-    // Handle Ctrl+V with image support
-    containerRef.addEventListener('paste', async (e: ClipboardEvent) => {
-      e.preventDefault()
-      const imageB64 = await clipboard.readImage()
-      if (imageB64) {
-        const imgEl = document.createElement('div')
-        imgEl.className = 'azu-inline-image'
-        imgEl.style.cssText = 'max-width:400px;max-height:300px;margin:4px 0;'
-        imgEl.innerHTML = `<img src="data:image/png;base64,${imageB64}" style="max-width:100%;border-radius:4px;border:1px solid var(--azu-border);" />`
-        containerRef.insertBefore(imgEl, containerRef.firstChild)
-        return
-      }
-      const text = await clipboard.readText()
-      if (text) {
-        pty.write(props.ptyId, text)
-      }
-    })
-
-    // Handle Ctrl+C — copy selection if text selected, otherwise send SIGINT
+    // Handle Ctrl+C/V via customKeyEventHandler (xterm captures these before DOM events)
     term.attachCustomKeyEventHandler((e) => {
-      if (e.ctrlKey && e.key === 'c' && e.type === 'keydown') {
+      if (e.type !== 'keydown') return true
+
+      // Ctrl+C — copy selection if text selected, otherwise send SIGINT
+      if (e.ctrlKey && e.key === 'c') {
         const selection = term!.getSelection()
         if (selection) {
           clipboard.writeText(selection)
-          return false
+          return false // prevent sending to PTY
         }
+        return true // let SIGINT through
       }
+
+      // Ctrl+V — paste from clipboard
+      if (e.ctrlKey && e.key === 'v') {
+        (async () => {
+          try {
+            // Try image first
+            const imageB64 = await clipboard.readImage()
+            if (imageB64 && containerRef) {
+              const imgEl = document.createElement('div')
+              imgEl.style.cssText = 'max-width:300px;margin:4px;position:absolute;bottom:4px;right:4px;z-index:10;'
+              imgEl.innerHTML = `<img src="data:image/png;base64,${imageB64}" style="max-width:100%;border-radius:6px;border:1px solid var(--azu-border);box-shadow:0 2px 8px rgba(0,0,0,0.3);" />`
+              containerRef.appendChild(imgEl)
+              setTimeout(() => imgEl.remove(), 5000) // auto-remove after 5s
+              return
+            }
+          } catch {}
+          // Fallback: paste text
+          try {
+            const text = await clipboard.readText()
+            if (text) {
+              pty.write(props.ptyId, text)
+            }
+          } catch {}
+        })()
+        return false // prevent default paste
+      }
+
       return true
     })
 
