@@ -3,7 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { listen } from '@tauri-apps/api/event'
-import { pty } from '../../lib/tauri-commands'
+import { pty, clipboard } from '../../lib/tauri-commands'
 
 interface TerminalProps {
   ptyId: string
@@ -64,6 +64,36 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       }
     })
     resizeObserver.observe(containerRef)
+
+    // Handle Ctrl+V with image support
+    containerRef.addEventListener('paste', async (e: ClipboardEvent) => {
+      e.preventDefault()
+      const imageB64 = await clipboard.readImage()
+      if (imageB64) {
+        const imgEl = document.createElement('div')
+        imgEl.className = 'azu-inline-image'
+        imgEl.style.cssText = 'max-width:400px;max-height:300px;margin:4px 0;'
+        imgEl.innerHTML = `<img src="data:image/png;base64,${imageB64}" style="max-width:100%;border-radius:4px;border:1px solid var(--azu-border);" />`
+        containerRef.insertBefore(imgEl, containerRef.firstChild)
+        return
+      }
+      const text = await clipboard.readText()
+      if (text) {
+        pty.write(props.ptyId, text)
+      }
+    })
+
+    // Handle Ctrl+C — copy selection if text selected, otherwise send SIGINT
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.ctrlKey && e.key === 'c' && e.type === 'keydown') {
+        const selection = term!.getSelection()
+        if (selection) {
+          clipboard.writeText(selection)
+          return false
+        }
+      }
+      return true
+    })
 
     onCleanup(() => {
       unlisten()
