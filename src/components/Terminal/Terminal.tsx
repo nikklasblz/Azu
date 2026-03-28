@@ -31,6 +31,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     term = new XTerm({
       cursorBlink: true,
       fontSize: 14,
+      allowTransparency: true,
       fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
       theme: {
         background: getComputedStyle(document.documentElement).getPropertyValue('--azu-terminal-bg').trim(),

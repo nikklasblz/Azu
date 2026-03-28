@@ -1,7 +1,8 @@
 import { Component, createSignal, Show, For } from 'solid-js'
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
-import { win, opacity as opacityCmd } from '../../lib/tauri-commands'
+import { win } from '../../lib/tauri-commands'
+import { themeStore } from '../../stores/theme'
 
 interface TitleBarProps {
   onAddTab?: () => void
@@ -26,9 +27,23 @@ const TitleBar: Component<TitleBarProps> = (props) => {
     await win.setAlwaysOnTop(next)
   }
 
-  const handleOpacity = async (value: number) => {
+  const hexToRgba = (hex: string, alpha: number): string => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r},${g},${b},${alpha})`
+  }
+
+  const handleOpacity = (value: number) => {
     setOpacity(value)
-    await opacityCmd.set(value / 100)
+    const alpha = value / 100
+    const theme = themeStore.themes[themeStore.activeId]
+    if (!theme) return
+    const root = document.documentElement.style
+    // Only backgrounds get alpha — text stays fully opaque
+    root.setProperty('--azu-surface', hexToRgba(theme.colors.surface, alpha))
+    root.setProperty('--azu-surface-alt', hexToRgba(theme.colors.surfaceAlt, alpha))
+    root.setProperty('--azu-terminal-bg', hexToRgba(theme.colors.terminalBg, alpha))
   }
 
   const handleLaunchAll = (cmd: string) => {

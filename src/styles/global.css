@@ -17,7 +17,7 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+html, body, #root { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: transparent !important; }
 
 /* Ensure xterm fills its container */
 .xterm { height: 100% !important; }

@@ -96,7 +96,7 @@ const GridCell: Component<GridCellProps> = (props) => {
     >
       {/* Cell toolbar */}
       <div
-        class="h-6 flex items-center px-1.5 border-b shrink-0 gap-0.5 transition-opacity"
+        class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
         style={{
           opacity: hovered() ? '1' : '0.3',
           'background-color': cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
@@ -104,49 +104,47 @@ const GridCell: Component<GridCellProps> = (props) => {
           color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)',
         }}
       >
-        {/* Split buttons */}
+        {/* All toolbar buttons: uniform w-6 h-5, no rounded, hover:bg only */}
         <button
-          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           onClick={() => handleSplit('h')}
           title="Split Right"
         >
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
-            <rect x="1" y="1" width="10" height="10" rx="1" />
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="1" y="1" width="10" height="10" />
             <line x1="6" y1="1" x2="6" y2="11" />
           </svg>
         </button>
         <button
-          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           onClick={() => handleSplit('v')}
           title="Split Down"
         >
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
-            <rect x="1" y="1" width="10" height="10" rx="1" />
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="1" y="1" width="10" height="10" />
             <line x1="1" y1="6" x2="11" y2="6" />
           </svg>
         </button>
-
-        {/* Folder picker */}
         <button
-          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           onClick={handlePickFolder}
           title={props.node.cwd || 'Set project folder'}
         >
-          <svg width="9" height="8" viewBox="0 0 14 12" fill="currentColor">
-            <path d="M1 1h4l2 2h6v8H1V1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+          <svg width="10" height="10" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M1 2h5l2 2h6v8H1V2z" />
           </svg>
         </button>
 
         {/* Launch CLI */}
         <div class="relative">
           <button
-            class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+            class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
             style={{ color: cellTheme()?.colors.accent || 'var(--azu-accent)' }}
             onClick={() => setShowLaunchMenu(!showLaunchMenu())}
             title="Launch CLI"
           >
-            <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
-              <polygon points="2,1 9,5 2,9" />
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+              <polygon points="3,1 10,6 3,11" />
             </svg>
           </button>
           <Show when={showLaunchMenu()}>
@@ -208,12 +206,12 @@ const GridCell: Component<GridCellProps> = (props) => {
         {/* Per-pane theme selector */}
         <div class="relative">
           <button
-            class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+            class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
             onClick={() => setShowThemeMenu(!showThemeMenu())}
             title="Pane theme"
           >
-            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-              <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" />
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1" />
               <path d="M6 6 L6 1.5 A4.5 4.5 0 0 1 6 10.5 Z" fill="currentColor" />
             </svg>
           </button>
@@ -257,14 +255,14 @@ const GridCell: Component<GridCellProps> = (props) => {
 
         {/* Close button */}
         <button
-          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           style={{ color: cellTheme()?.colors.error || 'var(--azu-error)' }}
           onClick={() => removeCell(props.node.id)}
           title="Close"
         >
-          <svg width="8" height="8" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
-            <line x1="2" y1="2" x2="8" y2="8" />
-            <line x1="8" y1="2" x2="2" y2="8" />
+          <svg width="10" height="10" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1" stroke-linecap="round">
+            <line x1="3" y1="3" x2="9" y2="9" />
+            <line x1="9" y1="3" x2="3" y2="9" />
           </svg>
         </button>
       </div>
