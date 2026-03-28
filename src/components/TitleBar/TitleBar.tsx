@@ -20,47 +20,60 @@ const TitleBar: Component<TitleBarProps> = (props) => {
 
   const handleOpacity = (value: number) => {
     setOpacity(value)
-    document.body.style.opacity = (value / 100).toString()
+    // Apply opacity only to terminal containers, not UI chrome
+    document.querySelectorAll('.xterm').forEach(el => {
+      (el as HTMLElement).style.opacity = (value / 100).toString()
+    })
   }
 
   return (
     <header
-      class="h-10 flex items-center px-3 bg-surface-alt border-b border-border shrink-0 gap-2 select-none"
+      class="h-9 flex items-center px-3 bg-surface-alt border-b border-border shrink-0 gap-2 select-none"
       data-tauri-drag-region
     >
-      <span class="font-bold text-accent text-sm" data-tauri-drag-region>Azu</span>
+      <span class="font-bold text-accent text-sm tracking-tight" data-tauri-drag-region>Azu</span>
 
       <PresetSwitcher />
 
       <div class="flex-1" data-tauri-drag-region />
 
-      {/* Opacity slider */}
-      <div class="relative">
+      {/* Opacity control */}
+      <div class="relative"
+        onMouseLeave={() => setShowOpacity(false)}
+      >
         <button
-          class="px-1.5 py-0.5 text-xs rounded hover:bg-surface text-text-muted"
+          class="h-6 px-1.5 text-xs rounded hover:bg-surface text-text-muted flex items-center gap-1"
           onClick={() => setShowOpacity(!showOpacity())}
-          title={`Opacity: ${opacity()}%`}
+          title={`Terminal opacity: ${opacity()}%`}
         >
-          {opacity() < 100 ? `${opacity()}%` : '◧'}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" opacity="0.5"/>
+            <path d="M12 2a10 10 0 0 1 0 20V2z"/>
+          </svg>
+          <Show when={opacity() < 100}>
+            <span>{opacity()}</span>
+          </Show>
         </button>
         <Show when={showOpacity()}>
-          <div class="absolute top-full right-0 mt-1 bg-surface-alt border border-border rounded shadow-lg z-50 p-2 min-w-36">
-            <div class="text-xs text-text-muted mb-1">Opacity: {opacity()}%</div>
+          <div class="absolute top-full right-0 mt-1 bg-surface-alt border border-border rounded-lg shadow-lg z-50 p-3 w-40">
+            <div class="text-[10px] text-text-muted mb-2 uppercase tracking-wider">Opacity</div>
             <input
               type="range"
-              min="30"
+              min="20"
               max="100"
               value={opacity()}
-              class="w-full accent-accent"
+              class="w-full h-1 rounded-full appearance-none cursor-pointer accent-accent"
+              style={{ background: `linear-gradient(to right, var(--azu-accent) ${opacity()}%, var(--azu-border) ${opacity()}%)` }}
               onInput={(e) => handleOpacity(parseInt((e.target as HTMLInputElement).value))}
             />
+            <div class="text-center text-xs text-text mt-1">{opacity()}%</div>
           </div>
         </Show>
       </div>
 
-      {/* Always on top toggle */}
+      {/* Pin on top */}
       <button
-        class="px-1.5 py-0.5 text-xs rounded hover:bg-surface"
+        class="h-6 w-6 flex items-center justify-center rounded hover:bg-surface transition-colors"
         classList={{
           'text-accent': pinned(),
           'text-text-muted': !pinned(),
@@ -68,28 +81,47 @@ const TitleBar: Component<TitleBarProps> = (props) => {
         onClick={togglePin}
         title={pinned() ? 'Unpin from top' : 'Pin on top'}
       >
-        📌
+        <svg width="12" height="12" viewBox="0 0 24 24" fill={pinned() ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2">
+          <path d="M12 2L12 22M12 2L8 6M12 2L16 6" transform={pinned() ? '' : 'rotate(45 12 12)'}/>
+          <circle cx="12" cy="14" r="4"/>
+        </svg>
       </button>
 
       <ThemePicker />
 
       {/* Window controls */}
-      <div class="flex items-center gap-0.5 ml-2">
+      <div class="flex items-center ml-1">
+        {/* Minimize */}
         <button
-          class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface text-text-muted hover:text-text text-xs"
+          class="h-8 w-10 flex items-center justify-center hover:bg-surface text-text-muted hover:text-text transition-colors"
           onClick={() => win.minimize()}
           title="Minimize"
-        >─</button>
+        >
+          <svg width="10" height="1" viewBox="0 0 10 1">
+            <rect width="10" height="1" fill="currentColor"/>
+          </svg>
+        </button>
+        {/* Maximize */}
         <button
-          class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface text-text-muted hover:text-text text-xs"
+          class="h-8 w-10 flex items-center justify-center hover:bg-surface text-text-muted hover:text-text transition-colors"
           onClick={() => win.maximize()}
           title="Maximize"
-        >□</button>
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="0.5" y="0.5" width="9" height="9"/>
+          </svg>
+        </button>
+        {/* Close */}
         <button
-          class="w-7 h-7 flex items-center justify-center rounded hover:bg-error/20 text-text-muted hover:text-error text-xs"
+          class="h-8 w-10 flex items-center justify-center hover:bg-red-600 text-text-muted hover:text-white transition-colors rounded-tr"
           onClick={() => win.close()}
           title="Close"
-        >✕</button>
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.2">
+            <line x1="1" y1="1" x2="9" y2="9"/>
+            <line x1="9" y1="1" x2="1" y2="9"/>
+          </svg>
+        </button>
       </div>
     </header>
   )
