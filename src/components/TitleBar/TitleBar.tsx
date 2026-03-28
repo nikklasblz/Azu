@@ -16,7 +16,7 @@ const TitleBar: Component = () => {
 
   const handleOpacity = (value: number) => {
     setOpacity(value)
-    document.documentElement.style.opacity = (value / 100).toString()
+    document.body.style.opacity = (value / 100).toString()
   }
 
   return (

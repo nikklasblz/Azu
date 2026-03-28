@@ -16,7 +16,6 @@ pub async fn create_window(app: AppHandle, title: Option<String>, always_on_top:
         .inner_size(900.0, 600.0)
         .min_inner_size(400.0, 300.0)
         .decorations(false)
-        .transparent(true)
         .always_on_top(on_top);
 
     builder.build().map_err(|e| e.to_string())?;
