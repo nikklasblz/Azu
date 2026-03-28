@@ -1,0 +1,20 @@
+@import '@xterm/xterm/css/xterm.css';
+
+:root {
+  --azu-surface: #0d1117;
+  --azu-surface-alt: #161b22;
+  --azu-border: #30363d;
+  --azu-text: #c9d1d9;
+  --azu-text-muted: #8b949e;
+  --azu-accent: #58a6ff;
+  --azu-success: #3fb950;
+  --azu-warning: #d29922;
+  --azu-error: #f85149;
+  --azu-terminal-bg: #0d1117;
+  --azu-terminal-fg: #c9d1d9;
+  --azu-terminal-cursor: #58a6ff;
+  --azu-terminal-selection: rgba(88, 166, 255, 0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
