@@ -63,3 +63,21 @@ pub async fn set_always_on_top(app: AppHandle, label: Option<String>, on_top: bo
     win.set_always_on_top(on_top).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn set_window_opacity(app: AppHandle, opacity: f64) -> Result<(), String> {
+    let win = app.get_webview_window("main").ok_or("Main window not found")?;
+    let hwnd = win.hwnd().map_err(|e| e.to_string())?;
+
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::UI::WindowsAndMessaging::*;
+        let h = hwnd.0 as windows_sys::Win32::Foundation::HWND;
+        let style = GetWindowLongW(h, GWL_EXSTYLE);
+        SetWindowLongW(h, GWL_EXSTYLE, style | WS_EX_LAYERED as i32);
+        let alpha = (opacity.clamp(0.2, 1.0) * 255.0) as u8;
+        SetLayeredWindowAttributes(h, 0, alpha, LWA_ALPHA);
+    }
+
+    Ok(())
+}
+

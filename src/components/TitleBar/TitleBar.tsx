@@ -1,8 +1,7 @@
 import { Component, createSignal, Show, For } from 'solid-js'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
-import { win } from '../../lib/tauri-commands'
+import { win, opacity as opacityCmd } from '../../lib/tauri-commands'
 
 interface TitleBarProps {
   onAddTab?: () => void
@@ -29,12 +28,7 @@ const TitleBar: Component<TitleBarProps> = (props) => {
 
   const handleOpacity = async (value: number) => {
     setOpacity(value)
-    try {
-      const w = getCurrentWindow()
-      await w.setOpacity(value / 100)
-    } catch {
-      // Fallback: if window API not available, skip
-    }
+    await opacityCmd.set(value / 100)
   }
 
   const handleLaunchAll = (cmd: string) => {

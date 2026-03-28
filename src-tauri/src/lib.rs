@@ -32,6 +32,7 @@ pub fn run() {
             commands::window::maximize_window,
             commands::window::close_window,
             commands::window::set_always_on_top,
+            commands::window::set_window_opacity,
             commands::config::save_config,
             commands::config::load_config,
             commands::dialog::pick_folder,

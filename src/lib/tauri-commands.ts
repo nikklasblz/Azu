@@ -15,6 +15,11 @@ export const config = {
     invoke('load_config', { key }),
 }
 
+export const opacity = {
+  set: (opacity: number): Promise<void> =>
+    invoke('set_window_opacity', { opacity }),
+}
+
 export const win = {
   create: (title?: string, alwaysOnTop?: boolean): Promise<string> =>
     invoke('create_window', { title, alwaysOnTop }),
