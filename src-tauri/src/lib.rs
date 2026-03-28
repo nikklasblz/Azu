@@ -1,3 +1,4 @@
+mod clipboard;
 mod commands;
 mod pty;
 
@@ -22,6 +23,10 @@ pub fn run() {
             commands::pty::write_pty,
             commands::pty::resize_pty,
             commands::pty::close_pty,
+            commands::clipboard::read_clipboard_text,
+            commands::clipboard::write_clipboard_text,
+            commands::clipboard::read_clipboard_image,
+            commands::clipboard::write_clipboard_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

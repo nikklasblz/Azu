@@ -1,5 +1,12 @@
 import { invoke } from '@tauri-apps/api/core'
 
+export const clipboard = {
+  readText: (): Promise<string> => invoke('read_clipboard_text'),
+  writeText: (text: string): Promise<void> => invoke('write_clipboard_text', { text }),
+  readImage: (): Promise<string | null> => invoke('read_clipboard_image'),
+  writeImage: (base64Png: string): Promise<void> => invoke('write_clipboard_image', { base64Png }),
+}
+
 export const pty = {
   create: (rows: number, cols: number): Promise<string> =>
     invoke('create_pty', { rows, cols }),
