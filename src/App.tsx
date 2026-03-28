@@ -1,14 +1,20 @@
-import { Component, createSignal, onMount, Show } from 'solid-js'
-import TerminalComponent from './components/Terminal/Terminal'
+import { Component, createSignal, onMount } from 'solid-js'
+import GridContainer from './components/Grid/Grid'
+import { gridStore } from './stores/grid'
 import { pty } from './lib/tauri-commands'
 import './styles/global.css'
 
 const App: Component = () => {
-  const [ptyId, setPtyId] = createSignal<string | null>(null)
+  const [ptyMap, setPtyMap] = createSignal<Record<string, string>>({})
+
+  const handleRequestPty = async (cellId: string) => {
+    const ptyId = await pty.create(24, 80)
+    setPtyMap((prev) => ({ ...prev, [cellId]: ptyId }))
+  }
 
   onMount(async () => {
-    const id = await pty.create(24, 80)
-    setPtyId(id)
+    const rootId = gridStore.root.id
+    await handleRequestPty(rootId)
   })
 
   return (
@@ -17,9 +23,7 @@ const App: Component = () => {
         <span class="font-bold text-accent">Azu</span>
       </header>
       <main class="flex-1 overflow-hidden">
-        <Show when={ptyId()}>
-          {(id) => <TerminalComponent ptyId={id()} />}
-        </Show>
+        <GridContainer ptyMap={ptyMap()} onRequestPty={handleRequestPty} />
       </main>
       <footer class="h-6 flex items-center px-4 bg-surface-alt border-t border-border text-xs text-text-muted shrink-0">
         <span>Ready</span>
