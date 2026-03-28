@@ -1,4 +1,4 @@
-import { Component, For, Show } from 'solid-js'
+import { Component, For, Show, createEffect, on } from 'solid-js'
 import { GridNode, gridStore, updateRatios } from '../../stores/grid'
 import GridCell from './GridCell'
 import GridResizer from './GridResizer'
@@ -8,13 +8,14 @@ interface GridProps {
   onRequestPty: (cellId: string) => void
 }
 
+function findLeaves(node: GridNode): string[] {
+  if (node.type === 'leaf') return [node.id]
+  return (node.children || []).flatMap(findLeaves)
+}
+
 const GridContainer: Component<GridProps> = (props) => {
-  // Auto-create PTYs for leaf cells that don't have one
+  // Auto-create PTYs for any leaf cell missing one
   const autoCreatePtys = () => {
-    const findLeaves = (node: GridNode): string[] => {
-      if (node.type === 'leaf') return [node.id]
-      return (node.children || []).flatMap(findLeaves)
-    }
     const leaves = findLeaves(gridStore.root)
     for (const leafId of leaves) {
       if (!props.ptyMap[leafId]) {
@@ -22,6 +23,13 @@ const GridContainer: Component<GridProps> = (props) => {
       }
     }
   }
+
+  // Watch for grid changes and auto-create PTYs
+  createEffect(on(
+    () => JSON.stringify(gridStore.root),
+    () => setTimeout(autoCreatePtys, 50),
+    { defer: true }
+  ))
 
   const renderNode = (node: GridNode) => {
     if (node.type === 'leaf') {

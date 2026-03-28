@@ -160,26 +160,19 @@ const GridCell: Component<GridCellProps> = (props) => {
         >✕</button>
       </div>
 
-      {/* Terminal or empty cell */}
+      {/* Terminal — auto-request PTY if missing */}
       <div class="flex-1 overflow-hidden">
-        <Show when={props.ptyId}>
+        <Show when={props.ptyId} fallback={
+          <div class="flex items-center justify-center h-full" style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}>
+            <span class="text-xs animate-pulse">Starting terminal...</span>
+          </div>
+        }>
           {(id) => (
             <TerminalComponent
               ptyId={id()}
               themeId={props.node.themeId}
             />
           )}
-        </Show>
-        <Show when={!props.ptyId}>
-          <div class="flex items-center justify-center h-full" style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}>
-            <button
-              class="px-3 py-1 rounded hover:opacity-80"
-              style={{ border: `1px solid ${cellTheme()?.colors.border || 'var(--azu-border)'}` }}
-              onClick={() => props.onRequestPty(props.node.id)}
-            >
-              + New Terminal
-            </button>
-          </div>
         </Show>
       </div>
     </div>

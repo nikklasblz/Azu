@@ -71,7 +71,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
     resizeObserver.observe(containerRef)
 
-    // Handle Ctrl+C/V via customKeyEventHandler (xterm captures these before DOM events)
+    // Handle Ctrl+C/V — clipboard integration
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
 
@@ -80,35 +80,17 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
         const selection = term!.getSelection()
         if (selection) {
           clipboard.writeText(selection)
-          return false // prevent sending to PTY
+          return false
         }
-        return true // let SIGINT through
+        return true
       }
 
-      // Ctrl+V — paste from clipboard
+      // Ctrl+V — always paste text to terminal
       if (e.ctrlKey && e.key === 'v') {
-        (async () => {
-          try {
-            // Try image first
-            const imageB64 = await clipboard.readImage()
-            if (imageB64 && containerRef) {
-              const imgEl = document.createElement('div')
-              imgEl.style.cssText = 'max-width:300px;margin:4px;position:absolute;bottom:4px;right:4px;z-index:10;'
-              imgEl.innerHTML = `<img src="data:image/png;base64,${imageB64}" style="max-width:100%;border-radius:6px;border:1px solid var(--azu-border);box-shadow:0 2px 8px rgba(0,0,0,0.3);" />`
-              containerRef.appendChild(imgEl)
-              setTimeout(() => imgEl.remove(), 5000) // auto-remove after 5s
-              return
-            }
-          } catch {}
-          // Fallback: paste text
-          try {
-            const text = await clipboard.readText()
-            if (text) {
-              pty.write(props.ptyId, text)
-            }
-          } catch {}
-        })()
-        return false // prevent default paste
+        clipboard.readText().then(text => {
+          if (text) pty.write(props.ptyId, text)
+        }).catch(() => {})
+        return false
       }
 
       return true
