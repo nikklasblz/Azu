@@ -1,19 +1,7 @@
 import { Component, Show, For, createSignal } from 'solid-js'
-import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellFont } from '../../stores/grid'
+import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme } from '../../stores/grid'
 import { getAvailableThemes, themeStore } from '../../stores/theme'
 import TerminalComponent from '../Terminal/Terminal'
-
-const MONO_FONTS = [
-  'Cascadia Code',
-  'Fira Code',
-  'JetBrains Mono',
-  'Consolas',
-  'Source Code Pro',
-  'IBM Plex Mono',
-  'Ubuntu Mono',
-  'Courier New',
-  'monospace',
-]
 
 interface GridCellProps {
   node: GridNode
@@ -26,7 +14,6 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [hovered, setHovered] = createSignal(false)
   const [editing, setEditing] = createSignal(false)
   const [showThemeMenu, setShowThemeMenu] = createSignal(false)
-  const [showFontMenu, setShowFontMenu] = createSignal(false)
 
   const handleSplit = (direction: 'h' | 'v') => {
     if (direction === 'h') splitHorizontal(props.node.id)
@@ -62,7 +49,7 @@ const GridCell: Component<GridCellProps> = (props) => {
       class="relative w-full h-full overflow-hidden flex flex-col"
       style={cellStyle()}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowFontMenu(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -123,7 +110,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         <div class="relative">
           <button
             class="px-1.5 py-0.5 rounded hover:opacity-80"
-            onClick={() => { setShowThemeMenu(!showThemeMenu()); setShowFontMenu(false) }}
+            onClick={() => setShowThemeMenu(!showThemeMenu())}
             title="Pane theme"
           >◐</button>
           <Show when={showThemeMenu()}>
@@ -164,41 +151,6 @@ const GridCell: Component<GridCellProps> = (props) => {
           </Show>
         </div>
 
-        {/* Font selector */}
-        <div class="relative">
-          <button
-            class="px-1.5 py-0.5 rounded hover:opacity-80"
-            onClick={() => { setShowFontMenu(!showFontMenu()); setShowThemeMenu(false) }}
-            title="Font"
-          >F</button>
-          <Show when={showFontMenu()}>
-            <div
-              class="absolute top-full right-0 mt-1 rounded shadow-lg z-50 min-w-44 p-1 max-h-64 overflow-y-auto"
-              style={{
-                background: cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
-                border: `1px solid ${cellTheme()?.colors.border || 'var(--azu-border)'}`,
-              }}
-            >
-              <For each={MONO_FONTS}>
-                {(font) => (
-                  <button
-                    class="block w-full px-2 py-1 text-left text-xs rounded hover:opacity-80"
-                    style={{
-                      'font-family': font,
-                      color: props.node.fontFamily === font
-                        ? (cellTheme()?.colors.accent || 'var(--azu-accent)')
-                        : (cellTheme()?.colors.text || 'var(--azu-text)'),
-                    }}
-                    onClick={() => { setCellFont(props.node.id, font); setShowFontMenu(false) }}
-                  >
-                    {font}
-                  </button>
-                )}
-              </For>
-            </div>
-          </Show>
-        </div>
-
         {/* Close button */}
         <button
           class="px-1.5 py-0.5 rounded hover:opacity-80"
@@ -215,7 +167,6 @@ const GridCell: Component<GridCellProps> = (props) => {
             <TerminalComponent
               ptyId={id()}
               themeId={props.node.themeId}
-              fontFamily={props.node.fontFamily}
             />
           )}
         </Show>
