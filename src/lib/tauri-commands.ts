@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 export const clipboard = {
   readText: (): Promise<string> => invoke('read_clipboard_text'),
@@ -17,14 +18,24 @@ export const config = {
 export const win = {
   create: (title?: string, alwaysOnTop?: boolean): Promise<string> =>
     invoke('create_window', { title, alwaysOnTop }),
-  minimize: (label?: string): Promise<void> =>
-    invoke('minimize_window', { label }),
-  maximize: (label?: string): Promise<void> =>
-    invoke('maximize_window', { label }),
-  close: (label?: string): Promise<void> =>
-    invoke('close_window', { label }),
-  setAlwaysOnTop: (onTop: boolean, label?: string): Promise<void> =>
-    invoke('set_always_on_top', { label, onTop }),
+  minimize: async (): Promise<void> => {
+    const w = getCurrentWebviewWindow()
+    await w.minimize()
+  },
+  maximize: async (): Promise<void> => {
+    const w = getCurrentWebviewWindow()
+    const maximized = await w.isMaximized()
+    if (maximized) await w.unmaximize()
+    else await w.maximize()
+  },
+  close: async (): Promise<void> => {
+    const w = getCurrentWebviewWindow()
+    await w.close()
+  },
+  setAlwaysOnTop: async (onTop: boolean): Promise<void> => {
+    const w = getCurrentWebviewWindow()
+    await w.setAlwaysOnTop(onTop)
+  },
 }
 
 export const pty = {
