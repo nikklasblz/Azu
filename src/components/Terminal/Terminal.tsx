@@ -8,6 +8,8 @@ import { themeStore } from '../../stores/theme'
 
 interface TerminalProps {
   ptyId: string
+  themeId?: string
+  fontFamily?: string
   onTitle?: (title: string) => void
 }
 
@@ -103,10 +105,11 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
   })
 
-  // Reactively update xterm theme when theme changes
+  // Reactively update xterm theme — per-pane theme takes priority over global
   createEffect(() => {
-    const activeId = themeStore.activeId
-    const theme = themeStore.themes[activeId]
+    const paneThemeId = props.themeId
+    const globalId = themeStore.activeId
+    const theme = paneThemeId ? themeStore.themes[paneThemeId] : themeStore.themes[globalId]
     if (term && theme) {
       term.options.theme = {
         background: theme.colors.terminalBg,
@@ -114,6 +117,14 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
         cursor: theme.colors.terminalCursor,
         selectionBackground: theme.colors.terminalSelection,
       }
+    }
+  })
+
+  // Reactively update font
+  createEffect(() => {
+    const font = props.fontFamily
+    if (term && font) {
+      term.options.fontFamily = `'${font}', monospace`
     }
   })
 

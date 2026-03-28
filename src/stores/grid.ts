@@ -6,6 +6,9 @@ export interface GridNode {
   panelType?: 'terminal' | 'ai' | 'project' | 'empty'
   children?: GridNode[]
   ratios?: number[]
+  label?: string
+  themeId?: string
+  fontFamily?: string
 }
 
 interface GridState {
@@ -117,9 +120,22 @@ export function updateRatios(nodeId: string, ratios: number[]) {
   )
 }
 
-// Note: addCell is not used in the test but exported for API completeness
-export function addCell() {
-  // placeholder for future use
+export function setCellLabel(cellId: string, label: string) {
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, label }))
+  )
+}
+
+export function setCellTheme(cellId: string, themeId: string) {
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, themeId }))
+  )
+}
+
+export function setCellFont(cellId: string, fontFamily: string) {
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, fontFamily }))
+  )
 }
 
 export { gridStore }
