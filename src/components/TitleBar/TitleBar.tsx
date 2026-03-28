@@ -3,7 +3,11 @@ import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
 import { win } from '../../lib/tauri-commands'
 
-const TitleBar: Component = () => {
+interface TitleBarProps {
+  onAddTab?: () => void
+}
+
+const TitleBar: Component<TitleBarProps> = (props) => {
   const [pinned, setPinned] = createSignal(false)
   const [opacity, setOpacity] = createSignal(100)
   const [showOpacity, setShowOpacity] = createSignal(false)
@@ -25,12 +29,6 @@ const TitleBar: Component = () => {
       data-tauri-drag-region
     >
       <span class="font-bold text-accent text-sm" data-tauri-drag-region>Azu</span>
-
-      <button
-        class="px-2 py-1 text-xs border border-border rounded hover:bg-surface text-text-muted"
-        onClick={() => win.create('Azu', true)}
-        title="New window (always on top)"
-      >+</button>
 
       <PresetSwitcher />
 
