@@ -1,6 +1,6 @@
 import { Component, Show, For, createSignal } from 'solid-js'
 import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd } from '../../stores/grid'
-import { getAvailableThemes, themeStore } from '../../stores/theme'
+import { getAvailableThemes, themeStore, bgColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
 
@@ -74,15 +74,15 @@ const GridCell: Component<GridCellProps> = (props) => {
     const t = cellTheme()
     if (!t) return {}
     return {
-      '--azu-surface': t.colors.surface,
-      '--azu-surface-alt': t.colors.surfaceAlt,
+      '--azu-surface': bgColor(t.colors.surface),
+      '--azu-surface-alt': bgColor(t.colors.surfaceAlt),
       '--azu-border': t.colors.border,
       '--azu-text': t.colors.text,
       '--azu-text-muted': t.colors.textMuted,
       '--azu-accent': t.colors.accent,
       '--azu-success': t.colors.success,
       '--azu-error': t.colors.error,
-      'background-color': t.colors.surface,
+      'background-color': bgColor(t.colors.surface),
       'color': t.colors.text,
     } as Record<string, string>
   }
@@ -99,7 +99,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
         style={{
           opacity: hovered() ? '1' : '0.3',
-          'background-color': cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
+          'background-color': cellTheme() ? bgColor(cellTheme()!.colors.surfaceAlt) : 'var(--azu-surface-alt)',
           'border-color': cellTheme()?.colors.border || 'var(--azu-border)',
           color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)',
         }}
@@ -149,16 +149,17 @@ const GridCell: Component<GridCellProps> = (props) => {
           </button>
           <Show when={showLaunchMenu()}>
             <div
-              class="absolute top-full left-0 mt-1 rounded shadow-lg z-50 min-w-44 p-1"
+              class="absolute top-full left-0 mt-1 rounded shadow-lg z-50 min-w-48 p-1"
               style={{
-                background: cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
+                background: cellTheme()?.colors.surface || 'var(--azu-surface)',
                 border: `1px solid ${cellTheme()?.colors.border || 'var(--azu-border)'}`,
               }}
             >
+              <div class="px-3 py-1 text-[10px] font-medium" style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}>Launch CLI</div>
               <For each={launchOptions}>
                 {(opt) => (
                   <button
-                    class="flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs rounded hover:opacity-80"
+                    class="flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs hover:bg-white/10"
                     style={{ color: cellTheme()?.colors.text || 'var(--azu-text)' }}
                     onClick={() => sendCommand(opt.cmd)}
                   >

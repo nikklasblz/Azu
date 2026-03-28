@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { listen } from '@tauri-apps/api/event'
 import { pty, clipboard } from '../../lib/tauri-commands'
-import { themeStore } from '../../stores/theme'
+import { themeStore, bgColor } from '../../stores/theme'
 
 interface TerminalProps {
   ptyId: string
@@ -119,13 +119,15 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
   })
 
   // Reactively update xterm theme — per-pane theme takes priority over global
+  // Also reacts to bgAlpha changes for transparent backgrounds
   createEffect(() => {
     const paneThemeId = props.themeId
     const globalId = themeStore.activeId
+    const _alpha = themeStore.bgAlpha // track reactivity
     const theme = paneThemeId ? themeStore.themes[paneThemeId] : themeStore.themes[globalId]
     if (term && theme) {
       term.options.theme = {
-        background: theme.colors.terminalBg,
+        background: bgColor(theme.colors.terminalBg),
         foreground: theme.colors.terminalFg,
         cursor: theme.colors.terminalCursor,
         selectionBackground: theme.colors.terminalSelection,
