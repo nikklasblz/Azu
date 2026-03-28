@@ -80,7 +80,7 @@ const GridCell: Component<GridCellProps> = (props) => {
     >
       {/* Cell toolbar */}
       <div
-        class="h-5 flex items-center px-1.5 border-b shrink-0 gap-0.5 transition-opacity"
+        class="h-6 flex items-center px-1.5 border-b shrink-0 gap-0.5 transition-opacity"
         style={{
           opacity: hovered() ? '1' : '0.3',
           'background-color': cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
@@ -124,8 +124,8 @@ const GridCell: Component<GridCellProps> = (props) => {
         {/* Editable label / cwd display */}
         <Show when={editing()} fallback={
           <span
-            class="flex-1 text-center cursor-pointer truncate px-1 text-[10px]"
-            style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}
+            class="flex-1 text-center cursor-pointer truncate px-1 text-xs"
+            style={{ color: cellTheme()?.colors.text || 'var(--azu-text)' }}
             onDblClick={() => setEditing(true)}
             title={props.node.cwd || 'Double-click to rename'}
           >
@@ -133,7 +133,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           </span>
         }>
           <input
-            class="flex-1 text-center text-[10px] px-1 rounded border-none outline-none"
+            class="flex-1 text-center text-xs px-1 rounded border-none outline-none"
             style={{
               background: cellTheme()?.colors.surface || 'var(--azu-surface)',
               color: cellTheme()?.colors.text || 'var(--azu-text)',

@@ -1,5 +1,5 @@
 import { Component, createSignal } from 'solid-js'
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
 import { win } from '../../lib/tauri-commands'
@@ -20,9 +20,12 @@ const TitleBar: Component<TitleBarProps> = (props) => {
 
   const handleOpacity = async (value: number) => {
     setOpacity(value)
-    // Real window transparency — see desktop/browser behind
-    const w = getCurrentWebviewWindow()
-    await w.setOpacity(value / 100)
+    try {
+      const w = getCurrentWindow()
+      await w.setOpacity(value / 100)
+    } catch {
+      // Fallback: if window API not available, skip
+    }
   }
 
   return (
