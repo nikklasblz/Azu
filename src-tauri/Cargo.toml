@@ -27,6 +27,7 @@ notify = "7"
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 dirs = "5"
+rfd = "0.15"
 
 [profile.release]
 panic = "abort"

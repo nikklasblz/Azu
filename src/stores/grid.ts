@@ -1,4 +1,4 @@
-import { createStore } from 'solid-js/store'
+import { createStore, produce } from 'solid-js/store'
 import { config } from '../lib/tauri-commands'
 
 export interface GridNode {
@@ -10,6 +10,7 @@ export interface GridNode {
   label?: string
   themeId?: string
   fontFamily?: string
+  cwd?: string
 }
 
 interface GridState {
@@ -23,8 +24,8 @@ function genId(): string {
   return `cell-${nextId++}`
 }
 
-function createLeaf(): GridNode {
-  return { id: genId(), type: 'leaf', panelType: 'terminal' }
+function createLeaf(cwd?: string): GridNode {
+  return { id: genId(), type: 'leaf', panelType: 'terminal', cwd }
 }
 
 function deepClone(node: GridNode): GridNode {
@@ -67,7 +68,7 @@ export function splitHorizontal(cellId: string) {
     findAndReplace(root, cellId, (node) => ({
       id: node.id,
       type: 'row' as const,
-      children: [createLeaf(), createLeaf()],
+      children: [createLeaf(node.cwd), createLeaf(node.cwd)],
       ratios: [0.5, 0.5],
     }))
   )
@@ -78,7 +79,7 @@ export function splitVertical(cellId: string) {
     findAndReplace(root, cellId, (node) => ({
       id: node.id,
       type: 'column' as const,
-      children: [createLeaf(), createLeaf()],
+      children: [createLeaf(node.cwd), createLeaf(node.cwd)],
       ratios: [0.5, 0.5],
     }))
   )
@@ -108,6 +109,16 @@ export function loadPreset(name: string) {
     setGridStore('root', deepClone(preset))
     setGridStore('activePreset', name)
   }
+}
+
+export function deletePreset(name: string) {
+  setGridStore(produce((state) => {
+    delete state.presets[name]
+    if (state.activePreset === name) {
+      state.activePreset = null
+    }
+  }))
+  persistPresets()
 }
 
 // Persist presets to disk so all windows share them
@@ -159,6 +170,22 @@ export function setCellFont(cellId: string, fontFamily: string) {
   setGridStore('root', (root) =>
     findAndReplace(root, cellId, (node) => ({ ...node, fontFamily }))
   )
+}
+
+export function setCellCwd(cellId: string, cwd: string) {
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, cwd }))
+  )
+}
+
+export function findNode(node: GridNode, id: string): GridNode | null {
+  if (node.id === id) return node
+  if (!node.children) return null
+  for (const child of node.children) {
+    const found = findNode(child, id)
+    if (found) return found
+  }
+  return null
 }
 
 export { gridStore }

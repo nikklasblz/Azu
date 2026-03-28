@@ -1,6 +1,7 @@
 import { Component, Show, For, createSignal } from 'solid-js'
-import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme } from '../../stores/grid'
+import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd } from '../../stores/grid'
 import { getAvailableThemes, themeStore } from '../../stores/theme'
+import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
 
 interface GridCellProps {
@@ -19,6 +20,32 @@ const GridCell: Component<GridCellProps> = (props) => {
     if (direction === 'h') splitHorizontal(props.node.id)
     else splitVertical(props.node.id)
     if (props.onSplit) setTimeout(() => props.onSplit!(), 50)
+  }
+
+  const handlePickFolder = async () => {
+    const folder = await dialog.pickFolder()
+    if (folder && props.ptyId) {
+      setCellCwd(props.node.id, folder)
+      const id = props.ptyId
+      // Delay after native dialog — ConPTY needs time to restore input state
+      await new Promise(r => setTimeout(r, 200))
+      // cd /d works in cmd.exe (changes drive) and PowerShell ignores /d gracefully
+      await pty.write(id, `cd /d "${folder}"`)
+      await new Promise(r => setTimeout(r, 50))
+      await pty.write(id, '\r')
+    }
+  }
+
+  const handleCwdChange = (newCwd: string) => {
+    setCellCwd(props.node.id, newCwd)
+  }
+
+  const abbreviatedCwd = () => {
+    const cwd = props.node.cwd
+    if (!cwd) return null
+    const parts = cwd.replace(/\\/g, '/').split('/').filter(Boolean)
+    if (parts.length <= 2) return parts.join('/')
+    return '.../' + parts.slice(-2).join('/')
   }
 
   const cellTheme = () => {
@@ -53,9 +80,9 @@ const GridCell: Component<GridCellProps> = (props) => {
     >
       {/* Cell toolbar */}
       <div
-        class="h-6 flex items-center px-2 border-b shrink-0 text-xs gap-1 transition-opacity"
+        class="h-5 flex items-center px-1.5 border-b shrink-0 gap-0.5 transition-opacity"
         style={{
-          opacity: hovered() ? '1' : '0.4',
+          opacity: hovered() ? '1' : '0.3',
           'background-color': cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
           'border-color': cellTheme()?.colors.border || 'var(--azu-border)',
           color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)',
@@ -63,29 +90,50 @@ const GridCell: Component<GridCellProps> = (props) => {
       >
         {/* Split buttons */}
         <button
-          class="px-1.5 py-0.5 rounded hover:opacity-80"
+          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
           onClick={() => handleSplit('h')}
           title="Split Right"
-        >⫼</button>
+        >
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="1" y="1" width="10" height="10" rx="1" />
+            <line x1="6" y1="1" x2="6" y2="11" />
+          </svg>
+        </button>
         <button
-          class="px-1.5 py-0.5 rounded hover:opacity-80"
+          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
           onClick={() => handleSplit('v')}
           title="Split Down"
-        >⊟</button>
+        >
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="1" y="1" width="10" height="10" rx="1" />
+            <line x1="1" y1="6" x2="11" y2="6" />
+          </svg>
+        </button>
 
-        {/* Editable label */}
+        {/* Folder picker */}
+        <button
+          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
+          onClick={handlePickFolder}
+          title={props.node.cwd || 'Set project folder'}
+        >
+          <svg width="9" height="8" viewBox="0 0 14 12" fill="currentColor">
+            <path d="M1 1h4l2 2h6v8H1V1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        {/* Editable label / cwd display */}
         <Show when={editing()} fallback={
           <span
-            class="flex-1 text-center cursor-pointer truncate px-2"
-            style={{ color: cellTheme()?.colors.text || 'var(--azu-text)' }}
+            class="flex-1 text-center cursor-pointer truncate px-1 text-[10px]"
+            style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}
             onDblClick={() => setEditing(true)}
-            title="Double-click to rename"
+            title={props.node.cwd || 'Double-click to rename'}
           >
-            {props.node.label || 'Terminal'}
+            {props.node.label || abbreviatedCwd() || 'Terminal'}
           </span>
         }>
           <input
-            class="flex-1 text-center text-xs px-1 rounded border-none outline-none"
+            class="flex-1 text-center text-[10px] px-1 rounded border-none outline-none"
             style={{
               background: cellTheme()?.colors.surface || 'var(--azu-surface)',
               color: cellTheme()?.colors.text || 'var(--azu-text)',
@@ -109,10 +157,15 @@ const GridCell: Component<GridCellProps> = (props) => {
         {/* Per-pane theme selector */}
         <div class="relative">
           <button
-            class="px-1.5 py-0.5 rounded hover:opacity-80"
+            class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
             onClick={() => setShowThemeMenu(!showThemeMenu())}
             title="Pane theme"
-          >◐</button>
+          >
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" />
+              <path d="M6 6 L6 1.5 A4.5 4.5 0 0 1 6 10.5 Z" fill="currentColor" />
+            </svg>
+          </button>
           <Show when={showThemeMenu()}>
             <div
               class="absolute top-full right-0 mt-1 rounded shadow-lg z-50 min-w-44 p-1 max-h-64 overflow-y-auto"
@@ -153,11 +206,16 @@ const GridCell: Component<GridCellProps> = (props) => {
 
         {/* Close button */}
         <button
-          class="px-1.5 py-0.5 rounded hover:opacity-80"
+          class="w-5 h-4 flex items-center justify-center rounded hover:opacity-80"
           style={{ color: cellTheme()?.colors.error || 'var(--azu-error)' }}
           onClick={() => removeCell(props.node.id)}
           title="Close"
-        >✕</button>
+        >
+          <svg width="8" height="8" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+            <line x1="2" y1="2" x2="8" y2="8" />
+            <line x1="8" y1="2" x2="2" y2="8" />
+          </svg>
+        </button>
       </div>
 
       {/* Terminal — auto-request PTY if missing */}
@@ -171,6 +229,7 @@ const GridCell: Component<GridCellProps> = (props) => {
             <TerminalComponent
               ptyId={id()}
               themeId={props.node.themeId}
+              onCwdChange={handleCwdChange}
             />
           )}
         </Show>

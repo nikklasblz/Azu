@@ -11,12 +11,19 @@ interface TerminalProps {
   themeId?: string
   fontFamily?: string
   onTitle?: (title: string) => void
+  onCwdChange?: (cwd: string) => void
 }
 
 const TerminalComponent: Component<TerminalProps> = (props) => {
   let containerRef: HTMLDivElement | undefined
   let term: XTerm | undefined
   let fitAddon: FitAddon | undefined
+
+  const focusTerminal = () => term?.focus()
+
+  // Collect cleanup fns synchronously so SolidJS registers them correctly
+  const cleanupFns: Array<() => void> = []
+  onCleanup(() => cleanupFns.forEach(fn => fn()))
 
   onMount(async () => {
     if (!containerRef) return
@@ -47,12 +54,16 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     fitAddon.fit()
     // Refit after layout settles
     requestAnimationFrame(() => fitAddon?.fit())
-    setTimeout(() => fitAddon?.fit(), 100)
+    setTimeout(() => {
+      fitAddon?.fit()
+      term?.focus()
+    }, 100)
 
     // Listen for PTY output
     const unlisten = await listen<string>(`pty-output-${props.ptyId}`, (event) => {
       term?.write(event.payload)
     })
+    cleanupFns.push(() => unlisten())
 
     // Send input to PTY
     term.onData((data) => {
@@ -70,6 +81,8 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       }
     })
     resizeObserver.observe(containerRef)
+    cleanupFns.push(() => resizeObserver.disconnect())
+    cleanupFns.push(() => term?.dispose())
 
     // Handle Ctrl+C — copy selection if text selected, otherwise send SIGINT
     // Ctrl+V is NOT intercepted — let browser/xterm handle paste natively
@@ -88,10 +101,19 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       return true
     })
 
-    onCleanup(() => {
-      unlisten()
-      resizeObserver.disconnect()
-      term?.dispose()
+    // OSC 7 — shell reports current working directory
+    // Format: \033]7;file:///path/to/dir\007
+    term.parser.registerOscHandler(7, (data) => {
+      if (props.onCwdChange) {
+        let path = data
+        // Strip file:// URI prefix
+        if (path.startsWith('file:///')) path = path.slice(7)
+        else if (path.startsWith('file://')) path = path.slice(5)
+        // Decode URI components (%20 → space, etc.)
+        try { path = decodeURIComponent(path) } catch {}
+        if (path) props.onCwdChange(path)
+      }
+      return true
     })
   })
 
@@ -118,7 +140,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     }
   })
 
-  return <div ref={containerRef} class="w-full h-full" />
+  return <div ref={containerRef} class="w-full h-full" onClick={focusTerminal} />
 }
 
 export default TerminalComponent

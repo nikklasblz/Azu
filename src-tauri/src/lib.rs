@@ -34,6 +34,7 @@ pub fn run() {
             commands::window::set_always_on_top,
             commands::config::save_config,
             commands::config::load_config,
+            commands::dialog::pick_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

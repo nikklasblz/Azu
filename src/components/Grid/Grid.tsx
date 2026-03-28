@@ -14,15 +14,27 @@ function findLeaves(node: GridNode): string[] {
 }
 
 const GridContainer: Component<GridProps> = (props) => {
+  // Track PTY requests in-flight to prevent duplicates
+  const pendingPtyRequests = new Set<string>()
+
   // Auto-create PTYs for any leaf cell missing one
   const autoCreatePtys = () => {
     const leaves = findLeaves(gridStore.root)
     for (const leafId of leaves) {
-      if (!props.ptyMap[leafId]) {
+      if (!props.ptyMap[leafId] && !pendingPtyRequests.has(leafId)) {
+        pendingPtyRequests.add(leafId)
         props.onRequestPty(leafId)
       }
     }
   }
+
+  // Clear pending requests once ptyMap confirms creation
+  createEffect(() => {
+    const map = props.ptyMap
+    for (const leafId of [...pendingPtyRequests]) {
+      if (map[leafId]) pendingPtyRequests.delete(leafId)
+    }
+  })
 
   // Watch for grid changes and auto-create PTYs
   createEffect(on(

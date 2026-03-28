@@ -3,8 +3,8 @@ use std::io::Read;
 use tauri::{AppHandle, Emitter, State};
 
 #[tauri::command]
-pub fn create_pty(state: State<'_, PtyManager>, app: AppHandle, rows: u16, cols: u16) -> Result<String, String> {
-    let id = state.spawn(rows, cols)?;
+pub fn create_pty(state: State<'_, PtyManager>, app: AppHandle, rows: u16, cols: u16, cwd: Option<String>) -> Result<String, String> {
+    let id = state.spawn(rows, cols, cwd)?;
     let reader = state.take_reader(&id)?;
     let pty_id = id.clone();
 

@@ -2,7 +2,7 @@ import { Component, createSignal, onMount, For, Show } from 'solid-js'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
-import { gridStore, loadPresetsFromDisk, resetGrid } from './stores/grid'
+import { gridStore, loadPresetsFromDisk, resetGrid, findNode } from './stores/grid'
 import { pty } from './lib/tauri-commands'
 import { initKeybindings } from './lib/keybindings'
 import './styles/global.css'
@@ -24,7 +24,9 @@ const App: Component = () => {
   const activeTab = () => tabs().find(t => t.id === activeTabId())
 
   const handleRequestPty = async (cellId: string) => {
-    const ptyId = await pty.create(24, 80)
+    const node = findNode(gridStore.root, cellId)
+    const cwd = node?.cwd || undefined
+    const ptyId = await pty.create(24, 80, cwd)
     setTabs(prev => prev.map(t =>
       t.id === activeTabId()
         ? { ...t, ptyMap: { ...t.ptyMap, [cellId]: ptyId } }
