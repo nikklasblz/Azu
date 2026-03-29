@@ -129,6 +129,24 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
   })
 
+  // Detect if a hex color is "light" (for ANSI palette adjustment)
+  const isLightBg = (hex: string): boolean => {
+    if (!hex || hex.startsWith('rgba')) return false
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5
+  }
+
+  // ANSI colors for light backgrounds (darker, higher contrast)
+  const lightAnsi = {
+    black: '#1a1a1a', red: '#c7243a', green: '#1a7a1a', yellow: '#8b6914',
+    blue: '#1a3a8a', magenta: '#8a1a6a', cyan: '#0a6a6a', white: '#d0d0d0',
+    brightBlack: '#4a4a4a', brightRed: '#e04040', brightGreen: '#2d8a2d',
+    brightYellow: '#a07a1a', brightBlue: '#2a4aaa', brightMagenta: '#aa2a8a',
+    brightCyan: '#1a8a8a', brightWhite: '#fafafa',
+  }
+
   // Reactively update xterm theme — per-pane theme takes priority over global
   // Also reacts to bgAlpha changes for transparent backgrounds
   createEffect(() => {
@@ -137,11 +155,13 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     const _alpha = themeStore.bgAlpha // track reactivity
     const theme = paneThemeId ? themeStore.themes[paneThemeId] : themeStore.themes[globalId]
     if (term && theme) {
+      const light = isLightBg(theme.colors.terminalBg)
       term.options.theme = {
         background: bgColor(theme.colors.terminalBg),
         foreground: theme.colors.terminalFg,
         cursor: theme.colors.terminalCursor,
         selectionBackground: theme.colors.terminalSelection,
+        ...(light ? lightAnsi : {}),
       }
     }
   })
