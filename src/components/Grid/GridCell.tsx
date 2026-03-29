@@ -70,6 +70,12 @@ const GridCell: Component<GridCellProps> = (props) => {
     return null
   }
 
+  // Always returns solid colors — never CSS variables
+  const colors = () => {
+    const t = cellTheme() || themeStore.themes[themeStore.activeId]
+    return t?.colors || { surface: '#0d1117', surfaceAlt: '#161b22', border: '#30363d', text: '#c9d1d9', textMuted: '#8b949e', accent: '#58a6ff', error: '#f85149' } as any
+  }
+
   const cellStyle = () => {
     const t = cellTheme()
     if (!t) return {}
@@ -99,9 +105,9 @@ const GridCell: Component<GridCellProps> = (props) => {
         class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
         style={{
           opacity: hovered() ? '1' : '0.3',
-          'background-color': cellTheme() ? bgColor(cellTheme()!.colors.surfaceAlt) : 'var(--azu-surface-alt)',
-          'border-color': cellTheme()?.colors.border || 'var(--azu-border)',
-          color: cellTheme()?.colors.text || 'var(--azu-text)',
+          'background-color': bgColor(colors().surfaceAlt),
+          'border-color': colors().border,
+          color: colors().text,
         }}
       >
         {/* All toolbar buttons: uniform w-6 h-5, no rounded, hover:bg only */}
@@ -139,7 +145,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         <div class="relative">
           <button
             class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
-            style={{ color: cellTheme()?.colors.accent || 'var(--azu-accent)' }}
+            style={{ color: colors().accent }}
             onClick={() => setShowLaunchMenu(!showLaunchMenu())}
             title="Launch CLI"
           >
@@ -151,16 +157,16 @@ const GridCell: Component<GridCellProps> = (props) => {
             <div
               class="absolute top-full left-0 mt-1 rounded shadow-lg z-50 min-w-48 p-1"
               style={{
-                background: cellTheme()?.colors.surface || 'var(--azu-surface)',
-                border: `1px solid ${cellTheme()?.colors.border || 'var(--azu-border)'}`,
+                background: colors().surface,
+                border: `1px solid ${colors().border}`,
               }}
             >
-              <div class="px-3 py-1 text-[10px] font-medium" style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}>Launch CLI</div>
+              <div class="px-3 py-1 text-[10px] font-medium" style={{ color: colors().textMuted }}>Launch CLI</div>
               <For each={launchOptions}>
                 {(opt) => (
                   <button
                     class="flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs hover:bg-white/10"
-                    style={{ color: cellTheme()?.colors.text || 'var(--azu-text)' }}
+                    style={{ color: colors().text }}
                     onClick={() => sendCommand(opt.cmd)}
                   >
                     {opt.label}
@@ -175,7 +181,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         <Show when={editing()} fallback={
           <span
             class="flex-1 text-center cursor-pointer truncate px-1 text-xs"
-            style={{ color: cellTheme()?.colors.text || 'var(--azu-text)' }}
+            style={{ color: colors().text }}
             onDblClick={() => setEditing(true)}
             title={props.node.cwd || 'Double-click to rename'}
           >
@@ -185,8 +191,8 @@ const GridCell: Component<GridCellProps> = (props) => {
           <input
             class="flex-1 text-center text-xs px-1 rounded border-none outline-none"
             style={{
-              background: cellTheme()?.colors.surface || 'var(--azu-surface)',
-              color: cellTheme()?.colors.text || 'var(--azu-text)',
+              background: colors().surface,
+              color: colors().text,
             }}
             value={props.node.label || 'Terminal'}
             autofocus
@@ -220,13 +226,13 @@ const GridCell: Component<GridCellProps> = (props) => {
             <div
               class="absolute top-full right-0 mt-1 rounded shadow-lg z-50 min-w-44 p-1 max-h-64 overflow-y-auto"
               style={{
-                background: cellTheme()?.colors.surfaceAlt || 'var(--azu-surface-alt)',
-                border: `1px solid ${cellTheme()?.colors.border || 'var(--azu-border)'}`,
+                background: colors().surfaceAlt,
+                border: `1px solid ${colors().border}`,
               }}
             >
               <button
                 class="flex items-center gap-2 w-full px-2 py-1 text-left text-xs rounded hover:opacity-80"
-                style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}
+                style={{ color: colors().textMuted }}
                 onClick={() => { setCellTheme(props.node.id, ''); setShowThemeMenu(false) }}
               >
                 ↩ Use global theme
@@ -237,8 +243,8 @@ const GridCell: Component<GridCellProps> = (props) => {
                     class="flex items-center gap-2 w-full px-2 py-1 text-left text-xs rounded hover:opacity-80"
                     style={{
                       color: props.node.themeId === theme.id
-                        ? (cellTheme()?.colors.accent || 'var(--azu-accent)')
-                        : (cellTheme()?.colors.text || 'var(--azu-text)'),
+                        ? (colors().accent)
+                        : (colors().text),
                     }}
                     onClick={() => { setCellTheme(props.node.id, theme.id); setShowThemeMenu(false) }}
                   >
@@ -257,7 +263,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         {/* Close button */}
         <button
           class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
-          style={{ color: cellTheme()?.colors.error || 'var(--azu-error)' }}
+          style={{ color: colors().error }}
           onClick={() => removeCell(props.node.id)}
           title="Close"
         >
@@ -271,7 +277,7 @@ const GridCell: Component<GridCellProps> = (props) => {
       {/* Terminal — auto-request PTY if missing */}
       <div class="flex-1 overflow-hidden">
         <Show when={props.ptyId} fallback={
-          <div class="flex items-center justify-center h-full" style={{ color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)' }}>
+          <div class="flex items-center justify-center h-full" style={{ color: colors().textMuted }}>
             <span class="text-xs animate-pulse">Starting terminal...</span>
           </div>
         }>
