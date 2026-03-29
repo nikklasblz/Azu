@@ -1,6 +1,6 @@
 import { Component, Show, For, createSignal } from 'solid-js'
 import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd } from '../../stores/grid'
-import { getAvailableThemes, themeStore, bgColor } from '../../stores/theme'
+import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
 
@@ -107,7 +107,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           opacity: hovered() ? '1' : '0.3',
           'background-color': bgColor(colors().surfaceAlt),
           'border-color': colors().border,
-          color: colors().text,
+          color: toolbarColor(colors()),
         }}
       >
         {/* All toolbar buttons: uniform w-6 h-5, no rounded, hover:bg only */}

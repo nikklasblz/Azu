@@ -41,6 +41,34 @@ export function bgColor(hex: string): string {
   return hexToRgba(hex, themeStore.bgAlpha)
 }
 
+function luminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+}
+
+function contrastRatio(bg: string, fg: string): number {
+  const lBg = luminance(bg)
+  const lFg = luminance(fg)
+  const lighter = Math.max(lBg, lFg)
+  const darker = Math.min(lBg, lFg)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+/** Pick highest-contrast color for toolbar icons against surfaceAlt */
+export function toolbarColor(colors: ThemeColors): string {
+  const bg = colors.surfaceAlt
+  const candidates = [
+    { color: colors.text, cr: contrastRatio(bg, colors.text) },
+    { color: colors.accent, cr: contrastRatio(bg, colors.accent) },
+  ]
+  const best = candidates.reduce((a, b) => a.cr > b.cr ? a : b)
+  if (best.cr >= 4.0) return best.color
+  // Below 4.0 — use high-contrast fallback
+  return luminance(bg) > 0.5 ? '#1a1a1a' : '#e8e8e8'
+}
+
 export function setBgAlpha(alpha: number) {
   setThemeStore('bgAlpha', alpha)
   // Re-apply theme to update CSS variables with new alpha
