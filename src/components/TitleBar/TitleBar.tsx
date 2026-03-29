@@ -1,4 +1,4 @@
-import { Component, createSignal, Show, For } from 'solid-js'
+import { Component, createSignal, Show, For, onMount, onCleanup } from 'solid-js'
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
 import { win } from '../../lib/tauri-commands'
@@ -17,9 +17,16 @@ const launchOptions = [
 ]
 
 const TitleBar: Component<TitleBarProps> = (props) => {
+  let launchRef: HTMLDivElement | undefined
   const [pinned, setPinned] = createSignal(false)
   const [opacity, setOpacity] = createSignal(100)
   const [showLaunch, setShowLaunch] = createSignal(false)
+
+  const handleClickOutsideLaunch = (e: MouseEvent) => {
+    if (launchRef && !launchRef.contains(e.target as Node)) setShowLaunch(false)
+  }
+  onMount(() => document.addEventListener('mousedown', handleClickOutsideLaunch))
+  onCleanup(() => document.removeEventListener('mousedown', handleClickOutsideLaunch))
 
   const togglePin = async () => {
     const next = !pinned()
@@ -47,9 +54,7 @@ const TitleBar: Component<TitleBarProps> = (props) => {
       <PresetSwitcher />
 
       {/* Launch All — sends command to every open shell */}
-      <div class="relative"
-        onMouseLeave={() => setShowLaunch(false)}
-      >
+      <div class="relative" ref={launchRef}>
         <button
           class="px-2 py-1 text-xs border border-accent/30 rounded hover:bg-accent/10 text-accent flex items-center gap-1"
           onClick={() => setShowLaunch(!showLaunch())}
@@ -59,11 +64,11 @@ const TitleBar: Component<TitleBarProps> = (props) => {
           All
         </button>
         <Show when={showLaunch()}>
-          <div class="absolute top-full left-0 mt-1 bg-surface-alt border border-border rounded shadow-lg z-50 min-w-52 p-1">
+          <div class="absolute top-full left-0 bg-surface-alt border border-border rounded shadow-lg z-50 min-w-52 p-1">
             <For each={launchOptions}>
               {(opt) => (
                 <button
-                  class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs rounded text-text hover:bg-surface"
+                  class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs text-text hover:bg-white/10"
                   onClick={() => handleLaunchAll(opt.cmd)}
                 >
                   <svg width="6" height="6" viewBox="0 0 10 10" fill="currentColor" class="text-accent"><polygon points="2,1 9,5 2,9" /></svg>

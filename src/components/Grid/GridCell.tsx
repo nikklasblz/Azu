@@ -101,7 +101,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           opacity: hovered() ? '1' : '0.3',
           'background-color': cellTheme() ? bgColor(cellTheme()!.colors.surfaceAlt) : 'var(--azu-surface-alt)',
           'border-color': cellTheme()?.colors.border || 'var(--azu-border)',
-          color: cellTheme()?.colors.textMuted || 'var(--azu-text-muted)',
+          color: cellTheme()?.colors.text || 'var(--azu-text)',
         }}
       >
         {/* All toolbar buttons: uniform w-6 h-5, no rounded, hover:bg only */}

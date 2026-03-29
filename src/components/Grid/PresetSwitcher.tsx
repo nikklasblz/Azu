@@ -96,7 +96,7 @@ const PresetSwitcher: Component = () => {
               class="px-3 py-1.5 text-xs bg-accent text-surface rounded font-medium"
               onClick={handleSave}
             >
-              Save
+              Save Layout
             </button>
           </div>
         </div>
