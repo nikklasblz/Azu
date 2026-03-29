@@ -66,9 +66,9 @@ function findParent(node: GridNode, targetId: string): GridNode | null {
 export function splitHorizontal(cellId: string) {
   setGridStore('root', (root) =>
     findAndReplace(root, cellId, (node) => ({
-      id: node.id,
+      id: genId(),
       type: 'row' as const,
-      children: [createLeaf(node.cwd), createLeaf(node.cwd)],
+      children: [{ ...node }, createLeaf(node.cwd)],
       ratios: [0.5, 0.5],
     }))
   )
@@ -77,9 +77,9 @@ export function splitHorizontal(cellId: string) {
 export function splitVertical(cellId: string) {
   setGridStore('root', (root) =>
     findAndReplace(root, cellId, (node) => ({
-      id: node.id,
+      id: genId(),
       type: 'column' as const,
-      children: [createLeaf(node.cwd), createLeaf(node.cwd)],
+      children: [{ ...node }, createLeaf(node.cwd)],
       ratios: [0.5, 0.5],
     }))
   )
