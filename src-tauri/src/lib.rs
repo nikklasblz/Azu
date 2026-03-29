@@ -27,6 +27,7 @@ pub fn run() {
             commands::clipboard::write_clipboard_text,
             commands::clipboard::read_clipboard_image,
             commands::clipboard::write_clipboard_image,
+            commands::clipboard::save_clipboard_image_to_file,
             commands::window::create_window,
             commands::window::minimize_window,
             commands::window::maximize_window,

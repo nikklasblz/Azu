@@ -6,6 +6,7 @@ export const clipboard = {
   writeText: (text: string): Promise<void> => invoke('write_clipboard_text', { text }),
   readImage: (): Promise<string | null> => invoke('read_clipboard_image'),
   writeImage: (base64Png: string): Promise<void> => invoke('write_clipboard_image', { base64Png }),
+  saveImageToFile: (): Promise<string | null> => invoke('save_clipboard_image_to_file'),
 }
 
 export const config = {

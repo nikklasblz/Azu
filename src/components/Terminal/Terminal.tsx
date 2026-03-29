@@ -85,9 +85,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     cleanupFns.push(() => resizeObserver.disconnect())
     cleanupFns.push(() => term?.dispose())
 
-    // Handle Ctrl+C — copy selection if text selected, otherwise send SIGINT
-    // Ctrl+V is NOT intercepted — let browser/xterm handle paste natively
-    // so that tools like Claude Code CLI can detect image pastes
+    // Handle Ctrl+C (copy) and Ctrl+V (image paste)
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
 
@@ -97,6 +95,19 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
           clipboard.writeText(selection)
           return false
         }
+      }
+
+      // Ctrl+V — check for image in clipboard, save to temp file and type path
+      if (e.ctrlKey && e.key === 'v') {
+        clipboard.saveImageToFile().then((path) => {
+          if (path) {
+            // Image found — type the file path into terminal
+            pty.write(props.ptyId, path)
+          }
+          // If no image, let xterm handle text paste normally (already happened)
+        }).catch(() => {})
+        // Return true to also let xterm paste text normally
+        return true
       }
 
       return true
