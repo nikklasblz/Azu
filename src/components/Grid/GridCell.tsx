@@ -1,5 +1,5 @@
 import { Component, Show, For, createSignal } from 'solid-js'
-import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd } from '../../stores/grid'
+import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd, swapCells } from '../../stores/grid'
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
@@ -16,6 +16,7 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [editing, setEditing] = createSignal(false)
   const [showThemeMenu, setShowThemeMenu] = createSignal(false)
   const [showLaunchMenu, setShowLaunchMenu] = createSignal(false)
+  const [dragOver, setDragOver] = createSignal(false)
 
   const launchOptions = [
     { label: 'Claude', cmd: 'claude' },
@@ -96,13 +97,28 @@ const GridCell: Component<GridCellProps> = (props) => {
   return (
     <div
       class="relative w-full h-full overflow-hidden flex flex-col"
-      style={cellStyle()}
+      style={{ ...cellStyle(), outline: dragOver() ? `2px solid ${colors().accent}` : 'none' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        const sourceId = e.dataTransfer?.getData('text/azu-cell-id')
+        if (sourceId && sourceId !== props.node.id) {
+          swapCells(sourceId, props.node.id)
+        }
+      }}
     >
-      {/* Cell toolbar */}
+      {/* Cell toolbar — draggable to reorder panes */}
       <div
-        class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
+        class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity cursor-grab active:cursor-grabbing"
+        draggable={true}
+        onDragStart={(e) => {
+          e.dataTransfer?.setData('text/azu-cell-id', props.node.id)
+          e.dataTransfer!.effectAllowed = 'move'
+        }}
         style={{
           opacity: '1',
           'background-color': bgColor(colors().surfaceAlt),

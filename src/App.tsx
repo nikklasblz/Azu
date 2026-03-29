@@ -98,6 +98,27 @@ const App: Component = () => {
                   'bg-surface text-text': activeTabId() === tab.id,
                   'text-text-muted hover:bg-surface/50': activeTabId() !== tab.id,
                 }}
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer?.setData('text/azu-tab-id', tab.id)
+                  e.dataTransfer!.effectAllowed = 'move'
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const sourceId = e.dataTransfer?.getData('text/azu-tab-id')
+                  if (sourceId && sourceId !== tab.id) {
+                    setTabs(prev => {
+                      const arr = [...prev]
+                      const fromIdx = arr.findIndex(t => t.id === sourceId)
+                      const toIdx = arr.findIndex(t => t.id === tab.id)
+                      if (fromIdx === -1 || toIdx === -1) return prev
+                      const [moved] = arr.splice(fromIdx, 1)
+                      arr.splice(toIdx, 0, moved)
+                      return arr
+                    })
+                  }
+                }}
                 onClick={() => setActiveTabId(tab.id)}
               >
                 <Show when={editing()} fallback={

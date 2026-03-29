@@ -178,6 +178,21 @@ export function setCellCwd(cellId: string, cwd: string) {
   )
 }
 
+export function swapCells(idA: string, idB: string) {
+  if (idA === idB) return
+  setGridStore('root', (root) => {
+    const nodeA = findNode(root, idA)
+    const nodeB = findNode(root, idB)
+    if (!nodeA || !nodeB) return root
+    // Swap by replacing A with B's content and B with A's content
+    const copyA = { ...nodeA }
+    const copyB = { ...nodeB }
+    let result = findAndReplace(root, idA, () => ({ ...copyB, id: idA }))
+    result = findAndReplace(result, idB, () => ({ ...copyA, id: idB }))
+    return result
+  })
+}
+
 export function findNode(node: GridNode, id: string): GridNode | null {
   if (node.id === id) return node
   if (!node.children) return null
