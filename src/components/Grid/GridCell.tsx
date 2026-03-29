@@ -104,7 +104,7 @@ const GridCell: Component<GridCellProps> = (props) => {
       <div
         class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
         style={{
-          opacity: hovered() ? '1' : '0.3',
+          opacity: hovered() ? '1' : '0.7',
           'background-color': bgColor(colors().surfaceAlt),
           'border-color': colors().border,
           color: toolbarColor(colors()),

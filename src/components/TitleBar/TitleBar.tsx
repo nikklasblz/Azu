@@ -2,7 +2,7 @@ import { Component, createSignal, Show, For, onMount, onCleanup } from 'solid-js
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
 import { win } from '../../lib/tauri-commands'
-import { setBgAlpha } from '../../stores/theme'
+import { setBgAlpha, themeStore } from '../../stores/theme'
 
 interface TitleBarProps {
   onAddTab?: () => void
@@ -64,19 +64,28 @@ const TitleBar: Component<TitleBarProps> = (props) => {
           All
         </button>
         <Show when={showLaunch()}>
-          <div class="absolute top-full left-0 bg-surface-alt border border-border rounded shadow-lg z-50 min-w-52 p-1">
-            <For each={launchOptions}>
-              {(opt) => (
-                <button
-                  class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs text-text hover:bg-white/10"
-                  onClick={() => handleLaunchAll(opt.cmd)}
-                >
-                  <svg width="6" height="6" viewBox="0 0 10 10" fill="currentColor" class="text-accent"><polygon points="2,1 9,5 2,9" /></svg>
-                  {opt.label}
-                </button>
-              )}
-            </For>
-          </div>
+          {(() => {
+            const t = () => themeStore.themes[themeStore.activeId]?.colors
+            return (
+              <div
+                class="absolute top-full left-0 rounded shadow-lg z-50 min-w-52 p-1"
+                style={{ background: t()?.surface || '#0d1117', border: `1px solid ${t()?.border || '#30363d'}` }}
+              >
+                <For each={launchOptions}>
+                  {(opt) => (
+                    <button
+                      class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs hover:bg-white/10"
+                      style={{ color: t()?.text || '#c9d1d9' }}
+                      onClick={() => handleLaunchAll(opt.cmd)}
+                    >
+                      <svg width="6" height="6" viewBox="0 0 10 10" fill={t()?.accent || '#58a6ff'}><polygon points="2,1 9,5 2,9" /></svg>
+                      {opt.label}
+                    </button>
+                  )}
+                </For>
+              </div>
+            )
+          })()}
         </Show>
       </div>
 
