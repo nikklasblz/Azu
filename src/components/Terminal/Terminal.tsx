@@ -218,7 +218,18 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
   })
 
   return (
-    <div class="relative w-full h-full">
+    <div
+      class="relative w-full h-full"
+      onWheel={(e) => {
+        if (e.ctrlKey && term) {
+          e.preventDefault()
+          const delta = e.deltaY > 0 ? -1 : 1
+          const size = Math.min(Math.max((term.options.fontSize || 14) + delta, 8), 32)
+          term.options.fontSize = size
+          fitAddon?.fit()
+        }
+      }}
+    >
       {/* Search bar */}
       {showSearch() && (
         <div class="absolute top-0 right-0 z-10 flex items-center gap-1 p-1" style={{ background: 'var(--azu-surface-alt)', border: '1px solid var(--azu-border)', 'border-radius': '0 0 0 4px' }}>
