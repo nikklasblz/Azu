@@ -123,7 +123,10 @@
 
 <nav>
   <div class="inner">
-    <span class="logo">Azu</span>
+    <span class="logo" style="display:flex;align-items:center;gap:6px;">
+      <svg width="20" height="20" viewBox="0 0 512 512"><path d="M256 60C256 60 300 150 300 230C300 275 282 310 256 332C230 310 212 275 212 230C212 150 256 60 256 60Z" fill="#58a6ff" opacity=".95"/><path d="M256 332C230 310 175 288 132 310C100 326 84 358 90 385C96 410 122 416 154 404C196 390 240 352 256 332Z" fill="#3d8bfd" opacity=".7"/><path d="M256 332C282 310 337 288 380 310C412 326 428 358 422 385C416 410 390 416 358 404C316 390 272 352 256 332Z" fill="#3d8bfd" opacity=".7"/><circle cx="256" cy="338" r="8" fill="#e6edf3" opacity=".85"/></svg>
+      Azu
+    </span>
     <a href="#features">Features</a>
     <a href="#security">Security</a>
     <a href="#pricing">Pricing</a>
@@ -140,6 +143,7 @@
   <h1>Your cockpit for<br><span>AI agents</span></h1>
   <p>The terminal reimagined for developers who orchestrate AI. Run Claude Code, Codex, and any CLI in a flexible grid with per-project context.</p>
   <div class="hero-stats">
+    <div><div class="stat-val accent" id="download-count">—</div><div class="stat-lbl">downloads</div></div>
     <div><div class="stat-val accent">1.8 MB</div><div class="stat-lbl">installer</div></div>
     <div><div class="stat-val green">0 ms</div><div class="stat-lbl">telemetry</div></div>
     <div><div class="stat-val gold">100%</div><div class="stat-lbl">open source</div></div>
@@ -389,5 +393,25 @@
   </p>
 </footer>
 
+<script>
+// Live download counter from GitHub Releases API
+(async () => {
+  try {
+    const res = await fetch('https://api.github.com/repos/nikklasblz/Azu/releases');
+    const releases = await res.json();
+    let total = 0;
+    for (const release of releases) {
+      for (const asset of (release.assets || [])) {
+        total += asset.download_count || 0;
+      }
+    }
+    const el = document.getElementById('download-count');
+    if (el) el.textContent = total.toLocaleString();
+  } catch {
+    const el = document.getElementById('download-count');
+    if (el) el.textContent = '0';
+  }
+})();
+</script>
 </body>
 </html>
