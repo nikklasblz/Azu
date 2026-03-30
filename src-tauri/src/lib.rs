@@ -1,3 +1,7 @@
+// Azu — AI-Native Terminal
+// Copyright (c) 2026 Nico Arriola <nico.arriola@gmail.com>
+// github.com/nikklasblz/Azu
+
 mod clipboard;
 mod commands;
 mod pty;

@@ -2,7 +2,7 @@
 name = "azu"
 version = "0.1.0"
 description = "Azu - AI-native terminal"
-authors = ["narri"]
+authors = ["Nico Arriola <nico.arriola@gmail.com>"]
 edition = "2021"
 rust-version = "1.77.2"
 

@@ -2,6 +2,11 @@
   "name": "azu",
   "version": "0.1.0",
   "private": true,
+  "author": "Nico Arriola <nico.arriola@gmail.com> (https://github.com/nikklasblz)",
+  "description": "AI-Native Terminal — lightweight terminal for AI agent orchestration",
+  "homepage": "https://nikklasblz.github.io/Azu/",
+  "repository": "https://github.com/nikklasblz/Azu",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

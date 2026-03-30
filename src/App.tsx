@@ -1,3 +1,7 @@
+// Azu — AI-Native Terminal
+// Copyright (c) 2026 Nico Arriola <nico.arriola@gmail.com>
+// github.com/nikklasblz/Azu
+
 import { Component, createSignal, onMount, For, Show } from 'solid-js'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'

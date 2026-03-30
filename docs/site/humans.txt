@@ -1,0 +1,16 @@
+/* TEAM */
+Creator: Nico Arriola
+Contact: nico.arriola@gmail.com
+GitHub: github.com/nikklasblz
+Location: Peru
+Role: Concept, Architecture, Development
+
+/* PROJECT */
+Name: Azu — AI-Native Terminal
+Named after: Azucena (creator's mother)
+First commit: March 26, 2026
+Repository: github.com/nikklasblz/Azu
+Stack: Tauri v2, SolidJS, xterm.js, Rust
+
+/* THANKS */
+Built with Claude Code by Anthropic
