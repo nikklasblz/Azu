@@ -6,6 +6,8 @@ import TerminalComponent from '../Terminal/Terminal'
 
 // Shared drag state (module-level, not per-component)
 let draggingCellId: string | null = null
+let dragOverCellId: string | null = null
+const dragListeners = new Set<(id: string | null) => void>()
 
 interface GridCellProps {
   node: GridNode
@@ -100,18 +102,17 @@ const GridCell: Component<GridCellProps> = (props) => {
   return (
     <div
       class="relative w-full h-full overflow-hidden flex flex-col"
+      data-cell-id={props.node.id}
       style={{ ...cellStyle(), outline: dragOver() ? `2px solid ${colors().accent}` : 'none' }}
-      onMouseEnter={() => {
-        setHovered(true)
-        if (draggingCellId && draggingCellId !== props.node.id) setDragOver(true)
-      }}
-      onMouseLeave={() => { setHovered(false); setDragOver(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
-      onMouseUp={() => {
-        if (draggingCellId && draggingCellId !== props.node.id) {
-          swapCells(draggingCellId, props.node.id)
-          draggingCellId = null
-          setDragOver(false)
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
+      ref={(el) => {
+        // Subscribe to drag state updates
+        const listener = (targetId: string | null) => {
+          setDragOver(targetId === props.node.id && draggingCellId !== props.node.id)
         }
+        dragListeners.add(listener)
+        // Cleanup when element is removed (SolidJS doesn't have onCleanup for refs, but this is fine for module lifecycle)
       }}
     >
       {/* Cell toolbar */}
@@ -124,17 +125,37 @@ const GridCell: Component<GridCellProps> = (props) => {
           color: toolbarColor(colors()),
         }}
       >
-        {/* Drag handle — mousedown starts drag, mouseup on target completes swap */}
+        {/* Drag handle — mousedown starts drag, document tracks target */}
         <div
           class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8 shrink-0 select-none"
           onMouseDown={(e) => {
             e.preventDefault()
+            e.stopPropagation()
             draggingCellId = props.node.id
-            const cleanup = () => {
-              draggingCellId = null
-              document.removeEventListener('mouseup', cleanup)
+
+            const onMove = (ev: MouseEvent) => {
+              const el = document.elementFromPoint(ev.clientX, ev.clientY)
+              const cell = el?.closest('[data-cell-id]') as HTMLElement | null
+              const targetId = cell?.dataset.cellId || null
+              if (targetId !== dragOverCellId) {
+                dragOverCellId = targetId
+                dragListeners.forEach(fn => fn(targetId))
+              }
             }
-            document.addEventListener('mouseup', cleanup)
+
+            const onUp = () => {
+              if (draggingCellId && dragOverCellId && draggingCellId !== dragOverCellId) {
+                swapCells(draggingCellId, dragOverCellId)
+              }
+              draggingCellId = null
+              dragOverCellId = null
+              dragListeners.forEach(fn => fn(null))
+              document.removeEventListener('mousemove', onMove)
+              document.removeEventListener('mouseup', onUp)
+            }
+
+            document.addEventListener('mousemove', onMove)
+            document.addEventListener('mouseup', onUp)
           }}
           title="Drag to swap panes"
         >
