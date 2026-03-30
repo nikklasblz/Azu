@@ -28,7 +28,20 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": []
+    "targets": ["msi", "nsis"],
+    "icon": [],
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English"]
+      }
+    },
+    "shortDescription": "AI-Native Terminal",
+    "longDescription": "Lightweight terminal for AI agents. Run Claude Code, Codex, and any CLI in a flexible grid with per-pane project context.",
+    "copyright": "© 2026 Azu",
+    "category": "DeveloperTool"
   }
 }

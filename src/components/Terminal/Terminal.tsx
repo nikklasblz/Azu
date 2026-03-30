@@ -72,6 +72,17 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
     cleanupFns.push(() => unlisten())
 
+    // Listen for PTY exit — notify user
+    const unlistenExit = await listen<number>(`pty-exit-${props.ptyId}`, (event) => {
+      const code = event.payload
+      term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
+      // Flash taskbar if window not focused
+      if (!document.hasFocus()) {
+        try { new Notification('Azu', { body: `Process finished (exit ${code})`, silent: code === 0 }) } catch {}
+      }
+    })
+    cleanupFns.push(() => unlistenExit())
+
     // Send input to PTY
     term.onData((data) => {
       pty.write(props.ptyId, data)
@@ -144,18 +155,20 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
 
     // OSC 7 — shell reports current working directory
-    // Format: \033]7;file:///path/to/dir\007
     term.parser.registerOscHandler(7, (data) => {
       if (props.onCwdChange) {
         let path = data
-        // Strip file:// URI prefix
         if (path.startsWith('file:///')) path = path.slice(7)
         else if (path.startsWith('file://')) path = path.slice(5)
-        // Decode URI components (%20 → space, etc.)
         try { path = decodeURIComponent(path) } catch {}
         if (path) props.onCwdChange(path)
       }
       return true
+    })
+
+    // OSC 0/2 — terminal title change (auto-rename pane)
+    term.onTitleChange((title) => {
+      if (props.onTitle && title) props.onTitle(title)
     })
   })
 

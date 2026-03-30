@@ -325,6 +325,10 @@ const GridCell: Component<GridCellProps> = (props) => {
               ptyId={id()}
               themeId={props.node.themeId}
               onCwdChange={handleCwdChange}
+              onTitle={(title) => {
+                // Auto-rename pane if user hasn't set a custom label
+                if (!props.node.label) setCellLabel(props.node.id, title)
+              }}
             />
           )}
         </Show>

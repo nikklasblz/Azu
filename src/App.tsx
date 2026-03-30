@@ -6,6 +6,7 @@ import { gridStore, setGridStore, loadPresetsFromDisk, resetGrid, findNode, find
 import { themeStore, applyTheme } from './stores/theme'
 import { pty, config } from './lib/tauri-commands'
 import { initKeybindings } from './lib/keybindings'
+import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
 
 interface Tab {
@@ -96,6 +97,7 @@ const App: Component = () => {
   onMount(async () => {
     initKeybindings({ addTab, closeTab, getActiveTabId: () => activeTabId() })
     await loadPresetsFromDisk()
+    await loadSnippets()
 
     // Restore previous state if available
     try {

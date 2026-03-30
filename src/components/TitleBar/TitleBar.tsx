@@ -1,6 +1,7 @@
-import { Component, createSignal, Show, For, onMount, onCleanup } from 'solid-js'
+import { Component, createSignal, Show, For, onMount, onCleanup, createMemo, createEffect } from 'solid-js'
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
+import SnippetPicker from './SnippetPicker'
 import { win } from '../../lib/tauri-commands'
 import { setBgAlpha, themeStore } from '../../stores/theme'
 
@@ -122,6 +123,7 @@ const TitleBar: Component<TitleBarProps> = (props) => {
         </svg>
       </button>
 
+      <SnippetPicker onRun={(cmd) => props.onLaunchAll?.(cmd)} />
       <ThemePicker />
 
       {/* Window controls — minimal, tight */}
