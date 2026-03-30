@@ -111,14 +111,9 @@ const GridCell: Component<GridCellProps> = (props) => {
         }
       }}
     >
-      {/* Cell toolbar — draggable to reorder panes */}
+      {/* Cell toolbar */}
       <div
-        class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity cursor-grab active:cursor-grabbing"
-        draggable={true}
-        onDragStart={(e) => {
-          e.dataTransfer?.setData('text/azu-cell-id', props.node.id)
-          e.dataTransfer!.effectAllowed = 'move'
-        }}
+        class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
         style={{
           opacity: '1',
           'background-color': bgColor(colors().surfaceAlt),
@@ -127,6 +122,21 @@ const GridCell: Component<GridCellProps> = (props) => {
         }}
       >
         {/* All toolbar buttons: uniform w-6 h-5, no rounded, hover:bg only */}
+        <button
+          class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8"
+          draggable={true}
+          onDragStart={(e) => {
+            e.dataTransfer?.setData('text/azu-cell-id', props.node.id)
+            e.dataTransfer!.effectAllowed = 'move'
+          }}
+          title="Drag to reorder"
+        >
+          <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor" opacity="0.5">
+            <circle cx="2" cy="2" r="1" /><circle cx="6" cy="2" r="1" />
+            <circle cx="2" cy="5" r="1" /><circle cx="6" cy="5" r="1" />
+            <circle cx="2" cy="8" r="1" /><circle cx="6" cy="8" r="1" />
+          </svg>
+        </button>
         <button
           class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           onClick={() => handleSplit('h')}
