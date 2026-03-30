@@ -1,12 +1,8 @@
 import { Component, Show, For, createSignal } from 'solid-js'
-import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd, swapCells } from '../../stores/grid'
+import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd, swapCells, gridStore, findAllLeaves } from '../../stores/grid'
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
-
-// Shared swap state — click grip on A to select, click grip on B to swap
-import { createSignal as createGlobalSignal } from 'solid-js'
-const [swapSourceId, setSwapSourceId] = createGlobalSignal<string | null>(null)
 
 interface GridCellProps {
   node: GridNode
@@ -20,6 +16,9 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [editing, setEditing] = createSignal(false)
   const [showThemeMenu, setShowThemeMenu] = createSignal(false)
   const [showLaunchMenu, setShowLaunchMenu] = createSignal(false)
+  const [showSwapMenu, setShowSwapMenu] = createSignal(false)
+
+  const otherLeaves = () => findAllLeaves(gridStore.root).filter(n => n.id !== props.node.id)
 
   const launchOptions = [
     { label: 'Claude', cmd: 'claude' },
@@ -100,9 +99,9 @@ const GridCell: Component<GridCellProps> = (props) => {
   return (
     <div
       class="relative w-full h-full overflow-hidden flex flex-col"
-      style={{ ...cellStyle(), outline: (swapSourceId() && swapSourceId() !== props.node.id) ? `2px dashed ${colors().accent}` : (swapSourceId() === props.node.id ? `2px solid ${colors().accent}` : 'none') }}
+      style={cellStyle()}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -114,33 +113,43 @@ const GridCell: Component<GridCellProps> = (props) => {
           color: toolbarColor(colors()),
         }}
       >
-        {/* Swap handle — click to select, click another to swap */}
-        <div
-          class="w-5 h-5 flex items-center justify-center cursor-pointer hover:bg-white/15 shrink-0 select-none"
-          classList={{ 'bg-white/20': swapSourceId() === props.node.id }}
-          onClick={(e) => {
-            e.stopPropagation()
-            const current = swapSourceId()
-            if (!current) {
-              // First click — select this pane
-              setSwapSourceId(props.node.id)
-            } else if (current === props.node.id) {
-              // Click same pane — deselect
-              setSwapSourceId(null)
-            } else {
-              // Click different pane — swap!
-              swapCells(current, props.node.id)
-              setSwapSourceId(null)
-            }
-          }}
-          title={swapSourceId() ? (swapSourceId() === props.node.id ? 'Click to cancel' : 'Click to swap here') : 'Click to select for swap'}
-        >
-          <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor" opacity="0.5">
-            <circle cx="2" cy="2" r="1" /><circle cx="6" cy="2" r="1" />
-            <circle cx="2" cy="5" r="1" /><circle cx="6" cy="5" r="1" />
-            <circle cx="2" cy="8" r="1" /><circle cx="6" cy="8" r="1" />
-          </svg>
-        </div>
+        {/* Swap pane position */}
+        <Show when={otherLeaves().length > 0}>
+          <div class="relative">
+            <button
+              class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+              onClick={() => setShowSwapMenu(!showSwapMenu())}
+              title="Swap with another pane"
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1">
+                <path d="M2 4L5 1L8 4" /><line x1="5" y1="1" x2="5" y2="8" />
+                <path d="M10 8L7 11L4 8" /><line x1="7" y1="11" x2="7" y2="4" />
+              </svg>
+            </button>
+            <Show when={showSwapMenu()}>
+              <div
+                class="absolute top-full left-0 rounded shadow-lg z-50 min-w-36 p-1"
+                style={{ background: colors().surface, border: `1px solid ${colors().border}` }}
+              >
+                <div class="px-2 py-1 text-[10px]" style={{ color: colors().textMuted }}>Swap with</div>
+                <For each={otherLeaves()}>
+                  {(leaf) => (
+                    <button
+                      class="w-full px-2 py-1 text-left text-xs hover:bg-white/10"
+                      style={{ color: colors().text }}
+                      onClick={() => {
+                        swapCells(props.node.id, leaf.id)
+                        setShowSwapMenu(false)
+                      }}
+                    >
+                      {leaf.label || leaf.cwd?.split(/[/\\]/).pop() || leaf.id}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </Show>
+          </div>
+        </Show>
         <button
           class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           onClick={() => handleSplit('h')}

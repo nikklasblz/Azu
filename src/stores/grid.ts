@@ -193,6 +193,11 @@ export function swapCells(idA: string, idB: string) {
   })
 }
 
+export function findAllLeaves(node: GridNode): GridNode[] {
+  if (node.type === 'leaf') return [node]
+  return (node.children || []).flatMap(findAllLeaves)
+}
+
 export function findNode(node: GridNode, id: string): GridNode | null {
   if (node.id === id) return node
   if (!node.children) return null
