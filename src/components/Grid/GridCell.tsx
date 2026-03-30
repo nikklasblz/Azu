@@ -4,6 +4,9 @@ import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../sto
 import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
 
+// Shared drag state (module-level, not per-component)
+let draggingCellId: string | null = null
+
 interface GridCellProps {
   node: GridNode
   ptyId?: string
@@ -98,17 +101,16 @@ const GridCell: Component<GridCellProps> = (props) => {
     <div
       class="relative w-full h-full overflow-hidden flex flex-col"
       style={{ ...cellStyle(), outline: dragOver() ? `2px solid ${colors().accent}` : 'none' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
-      onDragOver={(e: DragEvent) => { e.preventDefault(); e.stopPropagation(); setDragOver(true) }}
-      onDragLeave={(e: DragEvent) => { e.stopPropagation(); setDragOver(false) }}
-      onDrop={(e: DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setDragOver(false)
-        const sourceId = e.dataTransfer?.getData('text/azu-cell-id')
-        if (sourceId && sourceId !== props.node.id) {
-          swapCells(sourceId, props.node.id)
+      onMouseEnter={() => {
+        setHovered(true)
+        if (draggingCellId && draggingCellId !== props.node.id) setDragOver(true)
+      }}
+      onMouseLeave={() => { setHovered(false); setDragOver(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
+      onMouseUp={() => {
+        if (draggingCellId && draggingCellId !== props.node.id) {
+          swapCells(draggingCellId, props.node.id)
+          draggingCellId = null
+          setDragOver(false)
         }
       }}
     >
@@ -122,18 +124,19 @@ const GridCell: Component<GridCellProps> = (props) => {
           color: toolbarColor(colors()),
         }}
       >
-        {/* Drag handle — div (not button) for WebView2 drag compat */}
+        {/* Drag handle — mousedown starts drag, mouseup on target completes swap */}
         <div
-          class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8 shrink-0"
-          draggable="true"
-          onDragStart={(e: DragEvent) => {
-            e.stopPropagation()
-            if (e.dataTransfer) {
-              e.dataTransfer.setData('text/azu-cell-id', props.node.id)
-              e.dataTransfer.effectAllowed = 'move'
+          class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8 shrink-0 select-none"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            draggingCellId = props.node.id
+            const cleanup = () => {
+              draggingCellId = null
+              document.removeEventListener('mouseup', cleanup)
             }
+            document.addEventListener('mouseup', cleanup)
           }}
-          title="Drag to reorder"
+          title="Drag to swap panes"
         >
           <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor" opacity="0.5">
             <circle cx="2" cy="2" r="1" /><circle cx="6" cy="2" r="1" />
