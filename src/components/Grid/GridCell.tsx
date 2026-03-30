@@ -4,10 +4,9 @@ import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../sto
 import { dialog, pty } from '../../lib/tauri-commands'
 import TerminalComponent from '../Terminal/Terminal'
 
-// Shared drag state (module-level, not per-component)
-let draggingCellId: string | null = null
-let dragOverCellId: string | null = null
-const dragListeners = new Set<(id: string | null) => void>()
+// Shared swap state — click grip on A to select, click grip on B to swap
+import { createSignal as createGlobalSignal } from 'solid-js'
+const [swapSourceId, setSwapSourceId] = createGlobalSignal<string | null>(null)
 
 interface GridCellProps {
   node: GridNode
@@ -21,7 +20,6 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [editing, setEditing] = createSignal(false)
   const [showThemeMenu, setShowThemeMenu] = createSignal(false)
   const [showLaunchMenu, setShowLaunchMenu] = createSignal(false)
-  const [dragOver, setDragOver] = createSignal(false)
 
   const launchOptions = [
     { label: 'Claude', cmd: 'claude' },
@@ -102,18 +100,9 @@ const GridCell: Component<GridCellProps> = (props) => {
   return (
     <div
       class="relative w-full h-full overflow-hidden flex flex-col"
-      data-cell-id={props.node.id}
-      style={{ ...cellStyle(), outline: dragOver() ? `2px solid ${colors().accent}` : 'none' }}
+      style={{ ...cellStyle(), outline: (swapSourceId() && swapSourceId() !== props.node.id) ? `2px dashed ${colors().accent}` : (swapSourceId() === props.node.id ? `2px solid ${colors().accent}` : 'none') }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
-      ref={(el) => {
-        // Subscribe to drag state updates
-        const listener = (targetId: string | null) => {
-          setDragOver(targetId === props.node.id && draggingCellId !== props.node.id)
-        }
-        dragListeners.add(listener)
-        // Cleanup when element is removed (SolidJS doesn't have onCleanup for refs, but this is fine for module lifecycle)
-      }}
     >
       {/* Cell toolbar */}
       <div
@@ -125,39 +114,26 @@ const GridCell: Component<GridCellProps> = (props) => {
           color: toolbarColor(colors()),
         }}
       >
-        {/* Drag handle — mousedown starts drag, document tracks target */}
+        {/* Swap handle — click to select, click another to swap */}
         <div
-          class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8 shrink-0 select-none"
-          onMouseDown={(e) => {
-            e.preventDefault()
+          class="w-5 h-5 flex items-center justify-center cursor-pointer hover:bg-white/15 shrink-0 select-none"
+          classList={{ 'bg-white/20': swapSourceId() === props.node.id }}
+          onClick={(e) => {
             e.stopPropagation()
-            draggingCellId = props.node.id
-
-            const onMove = (ev: MouseEvent) => {
-              const el = document.elementFromPoint(ev.clientX, ev.clientY)
-              const cell = el?.closest('[data-cell-id]') as HTMLElement | null
-              const targetId = cell?.dataset.cellId || null
-              if (targetId !== dragOverCellId) {
-                dragOverCellId = targetId
-                dragListeners.forEach(fn => fn(targetId))
-              }
+            const current = swapSourceId()
+            if (!current) {
+              // First click — select this pane
+              setSwapSourceId(props.node.id)
+            } else if (current === props.node.id) {
+              // Click same pane — deselect
+              setSwapSourceId(null)
+            } else {
+              // Click different pane — swap!
+              swapCells(current, props.node.id)
+              setSwapSourceId(null)
             }
-
-            const onUp = () => {
-              if (draggingCellId && dragOverCellId && draggingCellId !== dragOverCellId) {
-                swapCells(draggingCellId, dragOverCellId)
-              }
-              draggingCellId = null
-              dragOverCellId = null
-              dragListeners.forEach(fn => fn(null))
-              document.removeEventListener('mousemove', onMove)
-              document.removeEventListener('mouseup', onUp)
-            }
-
-            document.addEventListener('mousemove', onMove)
-            document.addEventListener('mouseup', onUp)
           }}
-          title="Drag to swap panes"
+          title={swapSourceId() ? (swapSourceId() === props.node.id ? 'Click to cancel' : 'Click to swap here') : 'Click to select for swap'}
         >
           <svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor" opacity="0.5">
             <circle cx="2" cy="2" r="1" /><circle cx="6" cy="2" r="1" />
