@@ -100,10 +100,11 @@ const GridCell: Component<GridCellProps> = (props) => {
       style={{ ...cellStyle(), outline: dragOver() ? `2px solid ${colors().accent}` : 'none' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false) }}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
+      onDragOver={(e: DragEvent) => { e.preventDefault(); e.stopPropagation(); setDragOver(true) }}
+      onDragLeave={(e: DragEvent) => { e.stopPropagation(); setDragOver(false) }}
+      onDrop={(e: DragEvent) => {
         e.preventDefault()
+        e.stopPropagation()
         setDragOver(false)
         const sourceId = e.dataTransfer?.getData('text/azu-cell-id')
         if (sourceId && sourceId !== props.node.id) {
@@ -121,13 +122,16 @@ const GridCell: Component<GridCellProps> = (props) => {
           color: toolbarColor(colors()),
         }}
       >
-        {/* All toolbar buttons: uniform w-6 h-5, no rounded, hover:bg only */}
-        <button
-          class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8"
-          draggable={true}
-          onDragStart={(e) => {
-            e.dataTransfer?.setData('text/azu-cell-id', props.node.id)
-            e.dataTransfer!.effectAllowed = 'move'
+        {/* Drag handle — div (not button) for WebView2 drag compat */}
+        <div
+          class="w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/8 shrink-0"
+          draggable="true"
+          onDragStart={(e: DragEvent) => {
+            e.stopPropagation()
+            if (e.dataTransfer) {
+              e.dataTransfer.setData('text/azu-cell-id', props.node.id)
+              e.dataTransfer.effectAllowed = 'move'
+            }
           }}
           title="Drag to reorder"
         >
@@ -136,7 +140,7 @@ const GridCell: Component<GridCellProps> = (props) => {
             <circle cx="2" cy="5" r="1" /><circle cx="6" cy="5" r="1" />
             <circle cx="2" cy="8" r="1" /><circle cx="6" cy="8" r="1" />
           </svg>
-        </button>
+        </div>
         <button
           class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
           onClick={() => handleSplit('h')}
