@@ -91,9 +91,13 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     cleanupFns.push(() => resizeObserver.disconnect())
     cleanupFns.push(() => term?.dispose())
 
-    // Handle Ctrl+C (copy) and Ctrl+V (image paste)
+    // Handle keyboard shortcuts — return false to prevent xterm from processing
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
+
+      // Block these combos from xterm — let them bubble to global keybindings
+      if (e.ctrlKey && !e.shiftKey && (e.key === 't' || e.key === 'w')) return false
+      if (e.ctrlKey && e.shiftKey && (e.key === 'H' || e.key === 'V')) return false
 
       if (e.ctrlKey && e.key === 'c') {
         const selection = term!.getSelection()
