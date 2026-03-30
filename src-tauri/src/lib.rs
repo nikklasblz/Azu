@@ -37,6 +37,7 @@ pub fn run() {
             commands::config::save_config,
             commands::config::load_config,
             commands::dialog::pick_folder,
+            commands::env::detect_environment,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -99,6 +99,20 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       if (e.ctrlKey && !e.shiftKey && (e.key === 't' || e.key === 'w')) return false
       if (e.ctrlKey && e.shiftKey && (e.key === 'H' || e.key === 'V')) return false
 
+      // Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset
+      if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+        if (term) { term.options.fontSize = Math.min((term.options.fontSize || 14) + 1, 32); fitAddon?.fit() }
+        return false
+      }
+      if (e.ctrlKey && e.key === '-') {
+        if (term) { term.options.fontSize = Math.max((term.options.fontSize || 14) - 1, 8); fitAddon?.fit() }
+        return false
+      }
+      if (e.ctrlKey && e.key === '0') {
+        if (term) { term.options.fontSize = 14; fitAddon?.fit() }
+        return false
+      }
+
       if (e.ctrlKey && e.key === 'c') {
         const selection = term!.getSelection()
         if (selection) {

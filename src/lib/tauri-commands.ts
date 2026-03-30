@@ -59,3 +59,8 @@ export const dialog = {
   pickFolder: (): Promise<string | null> =>
     invoke('pick_folder'),
 }
+
+export const env = {
+  detect: (): Promise<Array<{ name: string; installed: boolean; version: string | null }>> =>
+    invoke('detect_environment'),
+}
