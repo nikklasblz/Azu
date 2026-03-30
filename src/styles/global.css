@@ -1,25 +1,63 @@
 @import '@xterm/xterm/css/xterm.css';
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   --azu-surface: #0d1117;
   --azu-surface-alt: #161b22;
-  --azu-border: #30363d;
-  --azu-text: #c9d1d9;
-  --azu-text-muted: #8b949e;
+  --azu-border: #21262d;
+  --azu-text: #e6edf3;
+  --azu-text-muted: #7d8590;
   --azu-accent: #58a6ff;
   --azu-success: #3fb950;
   --azu-warning: #d29922;
   --azu-error: #f85149;
   --azu-terminal-bg: #0d1117;
-  --azu-terminal-fg: #c9d1d9;
+  --azu-terminal-fg: #e6edf3;
   --azu-terminal-cursor: #58a6ff;
-  --azu-terminal-selection: rgba(88, 166, 255, 0.3);
+  --azu-terminal-selection: rgba(88, 166, 255, 0.2);
+  --azu-radius: 6px;
+  --azu-font-ui: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --azu-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --azu-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: transparent !important; }
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--azu-font-ui);
+  background: transparent !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* Ensure xterm fills its container */
+/* Smooth transitions on all interactive elements */
+button, input, select, textarea {
+  font-family: inherit;
+  transition: background var(--azu-transition), border-color var(--azu-transition), color var(--azu-transition), opacity var(--azu-transition);
+}
+
+button { cursor: pointer; border: none; background: none; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--azu-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--azu-text-muted); }
+
+/* Selection */
+::selection { background: var(--azu-accent); color: var(--azu-surface); }
+
+/* xterm fills its container */
 .xterm { height: 100% !important; }
 .xterm-viewport { overflow-y: auto !important; }
 .xterm-screen { height: 100% !important; }
+
+/* Dropdown animation */
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dropdown-enter {
+  animation: dropdown-in 120ms ease-out;
+}

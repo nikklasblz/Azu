@@ -123,16 +123,20 @@ const App: Component = () => {
     <div class="h-screen w-screen flex flex-col bg-surface text-text">
       <TitleBar onAddTab={addTab} onLaunchAll={handleLaunchAll} />
       {/* Tab bar */}
-      <div class="h-8 flex items-center bg-surface-alt border-b border-border shrink-0 overflow-x-auto">
+      <div class="h-9 flex items-center shrink-0 overflow-x-auto" style={{ background: 'var(--azu-surface)', 'border-bottom': '1px solid var(--azu-border)' }}>
         <For each={tabs()}>
           {(tab) => {
             const [editing, setEditing] = createSignal(false)
+            const isActive = () => activeTabId() === tab.id
             return (
               <div
-                class="flex items-center h-full px-3 text-xs cursor-pointer border-r border-border gap-1 shrink-0 max-w-40"
-                classList={{
-                  'bg-surface text-text': activeTabId() === tab.id,
-                  'text-text-muted hover:bg-surface/50': activeTabId() !== tab.id,
+                class="flex items-center h-full px-4 text-xs cursor-pointer gap-1.5 shrink-0 max-w-44 relative"
+                style={{
+                  color: isActive() ? 'var(--azu-text)' : 'var(--azu-text-muted)',
+                  background: isActive() ? 'var(--azu-surface-alt)' : 'transparent',
+                  'font-family': 'var(--azu-font-ui)',
+                  'font-weight': isActive() ? '600' : '400',
+                  'border-right': '1px solid var(--azu-border)',
                 }}
                 draggable={true}
                 onDragStart={(e) => {
@@ -194,9 +198,10 @@ const App: Component = () => {
           }}
         </For>
         <button
-          class="px-3 h-full text-xs text-text-muted hover:text-text hover:bg-surface/50"
+          class="px-3 h-full text-xs hover:bg-white/5"
+          style={{ color: 'var(--azu-text-muted)', 'font-size': '16px', 'line-height': '1' }}
           onClick={addTab}
-          title="New tab"
+          title="New tab (Ctrl+T)"
         >+</button>
       </div>
       <main class="flex-1 overflow-hidden">

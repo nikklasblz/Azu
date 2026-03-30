@@ -105,19 +105,19 @@ const GridCell: Component<GridCellProps> = (props) => {
     >
       {/* Cell toolbar */}
       <div
-        class="h-6 flex items-center px-1 border-b shrink-0 gap-px transition-opacity"
+        class="h-7 flex items-center px-1 shrink-0 gap-0.5"
         style={{
-          opacity: '1',
           'background-color': bgColor(colors().surfaceAlt),
-          'border-color': colors().border,
+          'border-bottom': `1px solid ${colors().border}`,
           color: toolbarColor(colors()),
+          'font-family': 'var(--azu-font-ui)',
         }}
       >
         {/* Swap pane position */}
         <Show when={otherLeaves().length > 0}>
           <div class="relative">
             <button
-              class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+              class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
               onClick={() => setShowSwapMenu(!showSwapMenu())}
               title="Swap with another pane"
             >
@@ -151,7 +151,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           </div>
         </Show>
         <button
-          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+          class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
           onClick={() => handleSplit('h')}
           title="Split Right"
         >
@@ -161,7 +161,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           </svg>
         </button>
         <button
-          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+          class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
           onClick={() => handleSplit('v')}
           title="Split Down"
         >
@@ -171,7 +171,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           </svg>
         </button>
         <button
-          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+          class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
           onClick={handlePickFolder}
           title={props.node.cwd || 'Set project folder'}
         >
@@ -183,7 +183,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         {/* Launch CLI */}
         <div class="relative">
           <button
-            class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+            class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
             style={{ color: colors().accent }}
             onClick={() => setShowLaunchMenu(!showLaunchMenu())}
             title="Launch CLI"
@@ -252,7 +252,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         {/* Per-pane theme selector */}
         <div class="relative">
           <button
-            class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+            class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
             onClick={() => setShowThemeMenu(!showThemeMenu())}
             title="Pane theme"
           >
@@ -301,7 +301,7 @@ const GridCell: Component<GridCellProps> = (props) => {
 
         {/* Close button */}
         <button
-          class="w-6 h-5 flex items-center justify-center hover:bg-white/8"
+          class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
           style={{ color: colors().error }}
           onClick={() => removeCell(props.node.id)}
           title="Close"

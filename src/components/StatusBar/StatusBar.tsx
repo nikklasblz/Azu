@@ -38,7 +38,7 @@ const StatusBar: Component = () => {
   }
 
   return (
-    <footer class="h-6 flex items-center px-4 bg-surface-alt border-t border-border text-xs text-text-muted shrink-0 gap-4 select-none">
+    <footer class="h-7 flex items-center px-4 text-xs shrink-0 gap-4 select-none" style={{ background: 'var(--azu-surface)', 'border-top': '1px solid var(--azu-border)', color: 'var(--azu-text-muted)', 'font-family': 'var(--azu-font-ui)', 'font-size': '11px' }}>
       <span class="text-success">● Ready</span>
       <span>{paneCount()} pane{paneCount() > 1 ? 's' : ''}</span>
       <span>{gridStore.activePreset || 'No preset'}</span>

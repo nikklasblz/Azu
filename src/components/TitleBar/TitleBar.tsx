@@ -47,10 +47,15 @@ const TitleBar: Component<TitleBarProps> = (props) => {
 
   return (
     <header
-      class="h-9 flex items-center px-3 bg-surface-alt border-b border-border shrink-0 gap-1.5 select-none"
+      class="h-10 flex items-center px-3 shrink-0 gap-2 select-none"
+      style={{ background: 'var(--azu-surface-alt)', 'border-bottom': '1px solid var(--azu-border)' }}
       data-tauri-drag-region
     >
-      <span class="font-semibold text-accent text-xs tracking-tight mr-1" data-tauri-drag-region>Azu</span>
+      <span
+        class="text-xs font-bold tracking-widest uppercase mr-0.5"
+        style={{ color: 'var(--azu-accent)', 'font-family': 'var(--azu-font-mono)', 'letter-spacing': '0.15em' }}
+        data-tauri-drag-region
+      >AZU</span>
 
       <PresetSwitcher />
 
