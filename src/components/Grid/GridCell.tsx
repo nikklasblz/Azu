@@ -105,7 +105,7 @@ const GridCell: Component<GridCellProps> = (props) => {
     >
       {/* Cell toolbar */}
       <div
-        class="h-7 flex items-center px-1 shrink-0 gap-0.5"
+        class="h-7 flex items-center px-1.5 shrink-0 gap-1"
         style={{
           'background-color': bgColor(colors().surfaceAlt),
           'border-bottom': `1px solid ${colors().border}`,
@@ -121,7 +121,7 @@ const GridCell: Component<GridCellProps> = (props) => {
               onClick={() => setShowSwapMenu(!showSwapMenu())}
               title="Swap with another pane"
             >
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
                 <path d="M2 4L5 1L8 4" /><line x1="5" y1="1" x2="5" y2="8" />
                 <path d="M10 8L7 11L4 8" /><line x1="7" y1="11" x2="7" y2="4" />
               </svg>
@@ -155,7 +155,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           onClick={() => handleSplit('h')}
           title="Split Right"
         >
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
             <rect x="1" y="1" width="10" height="10" />
             <line x1="6" y1="1" x2="6" y2="11" />
           </svg>
@@ -165,7 +165,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           onClick={() => handleSplit('v')}
           title="Split Down"
         >
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
             <rect x="1" y="1" width="10" height="10" />
             <line x1="1" y1="6" x2="11" y2="6" />
           </svg>
@@ -175,7 +175,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           onClick={handlePickFolder}
           title={props.node.cwd || 'Set project folder'}
         >
-          <svg width="10" height="10" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1">
+          <svg width="11" height="11" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.2">
             <path d="M1 2h5l2 2h6v8H1V2z" />
           </svg>
         </button>
@@ -188,7 +188,7 @@ const GridCell: Component<GridCellProps> = (props) => {
             onClick={() => setShowLaunchMenu(!showLaunchMenu())}
             title="Launch CLI"
           >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
               <polygon points="3,1 10,6 3,11" />
             </svg>
           </button>
@@ -256,7 +256,7 @@ const GridCell: Component<GridCellProps> = (props) => {
             onClick={() => setShowThemeMenu(!showThemeMenu())}
             title="Pane theme"
           >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1" />
               <path d="M6 6 L6 1.5 A4.5 4.5 0 0 1 6 10.5 Z" fill="currentColor" />
             </svg>
@@ -306,7 +306,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           onClick={() => removeCell(props.node.id)}
           title="Close"
         >
-          <svg width="10" height="10" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1" stroke-linecap="round">
+          <svg width="11" height="11" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
             <line x1="3" y1="3" x2="9" y2="9" />
             <line x1="9" y1="3" x2="3" y2="9" />
           </svg>
