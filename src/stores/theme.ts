@@ -62,11 +62,11 @@ export function toolbarColor(colors: ThemeColors): string {
   const candidates = [
     { color: colors.text, cr: contrastRatio(bg, colors.text) },
     { color: colors.accent, cr: contrastRatio(bg, colors.accent) },
+    { color: '#ffffff', cr: contrastRatio(bg, '#ffffff') },
+    { color: '#000000', cr: contrastRatio(bg, '#000000') },
   ]
   const best = candidates.reduce((a, b) => a.cr > b.cr ? a : b)
-  if (best.cr >= 4.0) return best.color
-  // Below 4.0 — use high-contrast fallback
-  return luminance(bg) > 0.5 ? '#1a1a1a' : '#e8e8e8'
+  return best.color
 }
 
 export function setBgAlpha(alpha: number) {
