@@ -1,7 +1,8 @@
-import { Component, onMount, onCleanup, createEffect } from 'solid-js'
+import { Component, onMount, onCleanup, createEffect, createSignal } from 'solid-js'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { SearchAddon } from '@xterm/addon-search'
 import { listen } from '@tauri-apps/api/event'
 import { pty, clipboard } from '../../lib/tauri-commands'
 import { themeStore, bgColor } from '../../stores/theme'
@@ -18,6 +19,9 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
   let containerRef: HTMLDivElement | undefined
   let term: XTerm | undefined
   let fitAddon: FitAddon | undefined
+  let searchAddon: SearchAddon | undefined
+  const [showSearch, setShowSearch] = createSignal(false)
+  const [searchQuery, setSearchQuery] = createSignal('')
 
   const focusTerminal = () => term?.focus()
 
@@ -42,7 +46,9 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     })
 
     fitAddon = new FitAddon()
+    searchAddon = new SearchAddon()
     term.loadAddon(fitAddon)
+    term.loadAddon(searchAddon)
     term.open(containerRef)
 
     try {
@@ -95,6 +101,12 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
           clipboard.writeText(selection)
           return false
         }
+      }
+
+      // Ctrl+Shift+F — toggle search
+      if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+        setShowSearch(!showSearch())
+        return false
       }
 
       // Ctrl+V — check for image in clipboard, save to temp file and type path
@@ -174,7 +186,37 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     }
   })
 
-  return <div ref={containerRef} class="w-full h-full" onClick={focusTerminal} />
+  return (
+    <div class="relative w-full h-full">
+      {/* Search bar */}
+      {showSearch() && (
+        <div class="absolute top-0 right-0 z-10 flex items-center gap-1 p-1" style={{ background: 'var(--azu-surface-alt)', border: '1px solid var(--azu-border)', 'border-radius': '0 0 0 4px' }}>
+          <input
+            class="px-2 py-0.5 text-xs rounded border-none outline-none"
+            style={{ background: 'var(--azu-surface)', color: 'var(--azu-text)', width: '180px' }}
+            placeholder="Search..."
+            value={searchQuery()}
+            autofocus
+            onInput={(e) => {
+              setSearchQuery(e.target.value)
+              if (e.target.value) searchAddon?.findNext(e.target.value)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (e.shiftKey) searchAddon?.findPrevious(searchQuery())
+                else searchAddon?.findNext(searchQuery())
+              }
+              if (e.key === 'Escape') { setShowSearch(false); focusTerminal() }
+            }}
+          />
+          <button class="px-1 text-xs" style={{ color: 'var(--azu-text-muted)' }} onClick={() => searchAddon?.findPrevious(searchQuery())}>↑</button>
+          <button class="px-1 text-xs" style={{ color: 'var(--azu-text-muted)' }} onClick={() => searchAddon?.findNext(searchQuery())}>↓</button>
+          <button class="px-1 text-xs" style={{ color: 'var(--azu-text-muted)' }} onClick={() => { setShowSearch(false); focusTerminal() }}>✕</button>
+        </div>
+      )}
+      <div ref={containerRef} class="w-full h-full" onClick={focusTerminal} />
+    </div>
+  )
 }
 
 export default TerminalComponent

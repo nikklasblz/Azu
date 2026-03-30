@@ -2,8 +2,9 @@ import { Component, createSignal, onMount, For, Show } from 'solid-js'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
-import { gridStore, loadPresetsFromDisk, resetGrid, findNode } from './stores/grid'
-import { pty } from './lib/tauri-commands'
+import { gridStore, setGridStore, loadPresetsFromDisk, resetGrid, findNode, findAllLeaves } from './stores/grid'
+import { themeStore, applyTheme } from './stores/theme'
+import { pty, config } from './lib/tauri-commands'
 import { initKeybindings } from './lib/keybindings'
 import './styles/global.css'
 
@@ -76,11 +77,44 @@ const App: Component = () => {
     }
   }
 
+  const saveState = async () => {
+    const state = {
+      tabs: tabs().map(t => ({ id: t.id, name: t.name })),
+      activeTabId: activeTabId(),
+      themeId: themeStore.activeId,
+      gridRoot: JSON.parse(JSON.stringify(gridStore.root)),
+    }
+    await config.save('app-state', JSON.stringify(state)).catch(() => {})
+  }
+
+  // Auto-save state periodically and on visibility change
+  const autoSave = setInterval(saveState, 30000)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveState()
+  })
+
   onMount(async () => {
-    initKeybindings()
+    initKeybindings({ addTab, closeTab, getActiveTabId: () => activeTabId() })
     await loadPresetsFromDisk()
-    const rootId = gridStore.root.id
-    await handleRequestPty(rootId)
+
+    // Restore previous state if available
+    try {
+      const saved = await config.load('app-state')
+      if (saved) {
+        const state = JSON.parse(saved)
+        if (state.themeId) applyTheme(state.themeId)
+        // Restore grid and create PTYs for all leaves
+        if (state.gridRoot) {
+          setGridStore('root', state.gridRoot)
+        }
+      }
+    } catch {}
+
+    // Create PTYs for all leaves in the grid
+    const leaves = findAllLeaves(gridStore.root)
+    for (const leaf of leaves) {
+      await handleRequestPty(leaf.id)
+    }
   })
 
   return (

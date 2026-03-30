@@ -208,4 +208,4 @@ export function findNode(node: GridNode, id: string): GridNode | null {
   return null
 }
 
-export { gridStore }
+export { gridStore, setGridStore }
