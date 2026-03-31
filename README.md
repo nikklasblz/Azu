@@ -1,6 +1,15 @@
 # Azu — AI-Native Terminal
 
-A lightweight, GPU-accelerated terminal built for the age of AI agents. Run Claude Code, Codex, and any CLI tool in a flexible grid layout with per-pane project context.
+[![Download](https://img.shields.io/github/downloads/nikklasblz/Azu/total?style=flat-square&color=58a6ff&label=downloads)](https://github.com/nikklasblz/Azu/releases)
+[![Size](https://img.shields.io/badge/size-1.8MB-3fb950?style=flat-square)](https://github.com/nikklasblz/Azu/releases)
+[![License](https://img.shields.io/github/license/nikklasblz/Azu?style=flat-square&color=8b949e)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/nikklasblz/Azu?style=flat-square&color=ffd700)](https://github.com/nikklasblz/Azu)
+
+**The terminal built for the age of AI agents.** 1.8MB. 10 themes. GPU-accelerated. Open source.
+
+Run Claude Code, Codex, and any CLI tool in a flexible grid layout with per-pane project context.
+
+**[Download](https://github.com/nikklasblz/Azu/releases) · [Website](https://nikklasblz.github.io/Azu/) · [Report Bug](https://github.com/nikklasblz/Azu/issues)**
 
 **Built with:** Tauri v2 + SolidJS + xterm.js + Rust
 
