@@ -1,5 +1,5 @@
 import { createStore } from 'solid-js/store'
-import { azuDark, azuLight, tokyoNight, dracula, nord, sunriseGold, midnightGold, roseQuartz, emberGlow } from '../themes'
+import { azuDark, azuLight, tokyoNight, dracula, nord, sunriseGold, midnightGold, roseQuartz, emberGlow, azuOrange } from '../themes'
 
 export interface ThemeColors {
   surface: string; surfaceAlt: string; border: string
@@ -18,7 +18,7 @@ interface ThemeState {
   bgAlpha: number
 }
 
-const builtInThemes: ThemeDefinition[] = [azuDark, azuLight, tokyoNight, dracula, nord, sunriseGold, midnightGold, roseQuartz, emberGlow]
+const builtInThemes: ThemeDefinition[] = [azuDark, azuLight, azuOrange, tokyoNight, dracula, nord, sunriseGold, midnightGold, roseQuartz, emberGlow]
 const themesMap: Record<string, ThemeDefinition> = {}
 for (const t of builtInThemes) { themesMap[t.id] = t }
 
