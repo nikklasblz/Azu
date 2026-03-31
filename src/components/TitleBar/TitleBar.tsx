@@ -53,11 +53,12 @@ const TitleBar: Component<TitleBarProps> = (props) => {
     >
       {/* Logo — azucena lily petals */}
       <div class="flex items-center gap-1.5 mr-0.5" data-tauri-drag-region>
-        <svg width="18" height="18" viewBox="0 0 256 256" style={{ 'flex-shrink': '0' }}>
-          <ellipse cx="128" cy="120" rx="28" ry="68" fill="#58a6ff" opacity="0.95"/>
-          <ellipse cx="83" cy="175" rx="22" ry="12" transform="rotate(-30 83 175)" fill="#3d8bfd" opacity="0.75"/>
-          <ellipse cx="173" cy="175" rx="22" ry="12" transform="rotate(30 173 175)" fill="#3d8bfd" opacity="0.75"/>
-          <circle cx="128" cy="178" r="4" fill="#e6edf3" opacity="0.9"/>
+        <svg width="18" height="18" viewBox="0 0 32 32" style={{ 'flex-shrink': '0' }}>
+          <circle cx="16" cy="16" r="15" fill="#0d1117"/>
+          <ellipse cx="16" cy="12" rx="3" ry="7" fill="#6ab0ff" opacity="0.9"/>
+          <ellipse cx="11" cy="20" rx="5" ry="3" transform="rotate(-20 11 20)" fill="#4a8fd4" opacity="0.8"/>
+          <ellipse cx="21" cy="20" rx="5" ry="3" transform="rotate(20 21 20)" fill="#4a8fd4" opacity="0.8"/>
+          <circle cx="16" cy="19" r="1" fill="#c0d0e0" opacity="0.8"/>
         </svg>
         <span
           class="text-xs font-bold tracking-widest uppercase"
