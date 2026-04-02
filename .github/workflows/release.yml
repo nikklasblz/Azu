@@ -14,16 +14,12 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
             artifact-name: linux-x64
           - platform: macos-latest
-            target: aarch64-apple-darwin
             artifact-name: macos-arm64
           - platform: macos-13
-            target: x86_64-apple-darwin
             artifact-name: macos-x64
           - platform: windows-latest
-            target: x86_64-pc-windows-msvc
             artifact-name: windows-x64
 
     runs-on: ${{ matrix.platform }}
@@ -69,6 +65,7 @@ jobs:
 
   sign-windows:
     needs: build
+    if: ${{ vars.SIGNPATH_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download unsigned Windows artifacts
@@ -105,14 +102,24 @@ jobs:
 
   release:
     needs: [build, sign-windows]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Download signed Windows artifacts
+        id: signed
         uses: actions/download-artifact@v4
         with:
           name: windows-x64-signed
+          path: release-assets/
+        continue-on-error: true
+
+      - name: Download unsigned Windows artifacts (fallback)
+        if: steps.signed.outcome == 'failure'
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
           path: release-assets/
 
       - name: Download Linux artifacts
@@ -145,7 +152,7 @@ jobs:
             ## Azu ${{ github.ref_name }}
 
             ### Downloads
-            - **Windows** (.msi / .exe) — Signed with EV certificate via SignPath
+            - **Windows** (.msi / .exe) ${{ steps.signed.outcome == 'success' && '— Signed with EV certificate via SignPath' || '— Unsigned' }}
             - **macOS** (.dmg) — Unsigned
             - **Linux** (.deb / .AppImage) — Unsigned
 
