@@ -1,11 +1,28 @@
 import { Component, onMount, onCleanup, createEffect, createSignal } from 'solid-js'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { WebglAddon } from '@xterm/addon-webgl'
 import { SearchAddon } from '@xterm/addon-search'
 import { listen } from '@tauri-apps/api/event'
 import { pty, clipboard } from '../../lib/tauri-commands'
 import { themeStore, bgColor } from '../../stores/theme'
+
+// Cache terminal instances by ptyId so splits don't destroy/recreate them
+const terminalCache = new Map<string, {
+  term: XTerm
+  fitAddon: FitAddon
+  searchAddon: SearchAddon
+  cleanupListeners: Array<() => void>
+}>()
+
+// Permanently destroy a terminal (when tab/pane is closed, not just re-rendered)
+export function destroyTerminal(ptyId: string) {
+  const cached = terminalCache.get(ptyId)
+  if (cached) {
+    cached.cleanupListeners.forEach(fn => fn())
+    cached.term.dispose()
+    terminalCache.delete(ptyId)
+  }
+}
 
 interface TerminalProps {
   ptyId: string
@@ -25,13 +42,50 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
 
   const focusTerminal = () => term?.focus()
 
-  // Collect cleanup fns synchronously so SolidJS registers them correctly
-  const cleanupFns: Array<() => void> = []
-  onCleanup(() => cleanupFns.forEach(fn => fn()))
+  onCleanup(() => {
+    // Don't destroy terminal — it may be reused after grid re-render
+    // Just detach the resize observer for this container
+    if (containerRef && resizeObserverRef) {
+      resizeObserverRef.disconnect()
+    }
+  })
+
+  let resizeObserverRef: ResizeObserver | undefined
 
   onMount(async () => {
     if (!containerRef) return
 
+    // Check cache — reuse existing terminal if grid re-rendered
+    const cached = terminalCache.get(props.ptyId)
+    if (cached) {
+      term = cached.term
+      fitAddon = cached.fitAddon
+      searchAddon = cached.searchAddon
+      // Move existing terminal DOM to new container
+      if (term.element) {
+        containerRef.appendChild(term.element)
+      }
+      // Refit to new container size
+      requestAnimationFrame(() => {
+        fitAddon?.fit()
+        if (term && fitAddon) {
+          const dims = fitAddon.proposeDimensions()
+          if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
+        }
+      })
+      // New resize observer for new container
+      resizeObserverRef = new ResizeObserver(() => {
+        fitAddon?.fit()
+        if (term && fitAddon) {
+          const dims = fitAddon.proposeDimensions()
+          if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
+        }
+      })
+      resizeObserverRef.observe(containerRef)
+      return
+    }
+
+    // Create new terminal instance
     term = new XTerm({
       cursorBlink: true,
       fontSize: 14,
@@ -51,66 +105,56 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     term.loadAddon(searchAddon)
     term.open(containerRef)
 
-    try {
-      const webglAddon = new WebglAddon()
-      term.loadAddon(webglAddon)
-    } catch {
-      // WebGL not available, fallback to canvas
-    }
+    // Canvas renderer (default) — no WebGL to avoid GPU context limits with multiple panes
 
     fitAddon.fit()
-    // Refit after layout settles
     requestAnimationFrame(() => fitAddon?.fit())
     setTimeout(() => {
       fitAddon?.fit()
       term?.focus()
     }, 100)
 
+    // Store in cache for reuse across grid re-renders
+    const cleanupListeners: Array<() => void> = []
+    terminalCache.set(props.ptyId, { term, fitAddon, searchAddon, cleanupListeners })
+
     // Listen for PTY output
     const unlisten = await listen<string>(`pty-output-${props.ptyId}`, (event) => {
       term?.write(event.payload)
     })
-    cleanupFns.push(() => unlisten())
+    cleanupListeners.push(() => unlisten())
 
-    // Listen for PTY exit — notify user
+    // Listen for PTY exit
     const unlistenExit = await listen<number>(`pty-exit-${props.ptyId}`, (event) => {
       const code = event.payload
       term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
-      // Flash taskbar if window not focused
       if (!document.hasFocus()) {
         try { new Notification('Azu', { body: `Process finished (exit ${code})`, silent: code === 0 }) } catch {}
       }
     })
-    cleanupFns.push(() => unlistenExit())
+    cleanupListeners.push(() => unlistenExit())
 
     // Send input to PTY
     term.onData((data) => {
       pty.write(props.ptyId, data)
     })
 
-    // Handle resize
-    const resizeObserver = new ResizeObserver(() => {
+    // Resize observer
+    resizeObserverRef = new ResizeObserver(() => {
       fitAddon?.fit()
       if (term && fitAddon) {
         const dims = fitAddon.proposeDimensions()
-        if (dims) {
-          pty.resize(props.ptyId, dims.rows, dims.cols)
+        if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
         }
-      }
     })
-    resizeObserver.observe(containerRef)
-    cleanupFns.push(() => resizeObserver.disconnect())
-    cleanupFns.push(() => term?.dispose())
+    resizeObserverRef.observe(containerRef)
 
-    // Handle keyboard shortcuts — return false to prevent xterm from processing
+    // Keyboard shortcuts
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
-
-      // Block these combos from xterm — let them bubble to global keybindings
       if (e.ctrlKey && !e.shiftKey && (e.key === 't' || e.key === 'w')) return false
       if (e.ctrlKey && e.shiftKey && (e.key === 'H' || e.key === 'V')) return false
 
-      // Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset
       if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
         if (term) { term.options.fontSize = Math.min((term.options.fontSize || 14) + 1, 32); fitAddon?.fit() }
         return false
@@ -132,29 +176,22 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
         }
       }
 
-      // Ctrl+Shift+F — toggle search
       if (e.ctrlKey && e.shiftKey && e.key === 'F') {
         setShowSearch(!showSearch())
         return false
       }
 
-      // Ctrl+V — check for image in clipboard, save to temp file and type path
       if (e.ctrlKey && e.key === 'v') {
         clipboard.saveImageToFile().then((path) => {
-          if (path) {
-            // Image found — type the file path into terminal
-            pty.write(props.ptyId, path)
-          }
-          // If no image, let xterm handle text paste normally (already happened)
+          if (path) pty.write(props.ptyId, path)
         }).catch(() => {})
-        // Return true to also let xterm paste text normally
         return true
       }
 
       return true
     })
 
-    // OSC 7 — shell reports current working directory
+    // OSC 7 — working directory
     term.parser.registerOscHandler(7, (data) => {
       if (props.onCwdChange) {
         let path = data
@@ -166,7 +203,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       return true
     })
 
-    // OSC 0/2 — terminal title change (auto-rename pane)
+    // OSC 0/2 — title change
     term.onTitleChange((title) => {
       if (props.onTitle && title) props.onTitle(title)
     })
