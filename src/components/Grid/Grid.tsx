@@ -37,8 +37,9 @@ const GridContainer: Component<GridProps> = (props) => {
   })
 
   // Watch for grid changes and auto-create PTYs
+  // Track leaf count instead of JSON.stringify (cheaper)
   createEffect(on(
-    () => JSON.stringify(gridStore.root),
+    () => findLeaves(gridStore.root).length,
     () => setTimeout(autoCreatePtys, 50),
     { defer: true }
   ))
