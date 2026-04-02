@@ -143,7 +143,6 @@ export async function loadPresetsFromDisk() {
 }
 
 export function resetGrid() {
-  nextId = 1
   setGridStore('root', createLeaf())
   setGridStore('activePreset', null)
 }

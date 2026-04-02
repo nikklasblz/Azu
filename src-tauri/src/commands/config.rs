@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
@@ -10,15 +9,36 @@ fn config_dir(app: &AppHandle) -> PathBuf {
     dir
 }
 
+fn validate_key(key: &str) -> Result<(), String> {
+    if key.is_empty() || !key.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        return Err("Invalid config key".to_string());
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn save_config(app: AppHandle, key: String, value: String) -> Result<(), String> {
-    let path = config_dir(&app).join(format!("{}.json", key));
+    validate_key(&key)?;
+    let dir = config_dir(&app);
+    let path = dir.join(format!("{}.json", key));
+    // Ensure resolved path is within config dir
+    let canonical = path.canonicalize().unwrap_or(path.clone());
+    if !canonical.starts_with(&dir) {
+        return Err("Invalid config path".to_string());
+    }
     fs::write(&path, &value).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn load_config(app: AppHandle, key: String) -> Result<Option<String>, String> {
-    let path = config_dir(&app).join(format!("{}.json", key));
+    validate_key(&key)?;
+    let dir = config_dir(&app);
+    let path = dir.join(format!("{}.json", key));
+    // Ensure resolved path is within config dir
+    let canonical = path.canonicalize().unwrap_or(path.clone());
+    if !canonical.starts_with(&dir) {
+        return Err("Invalid config path".to_string());
+    }
     if path.exists() {
         let data = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         Ok(Some(data))

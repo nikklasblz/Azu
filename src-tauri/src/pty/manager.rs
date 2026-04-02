@@ -1,8 +1,10 @@
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use uuid::Uuid;
+
+static CACHED_SHELL: OnceLock<String> = OnceLock::new();
 
 pub struct PtyInstance {
     #[allow(dead_code)]
@@ -28,7 +30,7 @@ impl PtyManager {
             .openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
             .map_err(|e| e.to_string())?;
 
-        let shell = Self::detect_shell();
+        let shell = CACHED_SHELL.get_or_init(|| Self::detect_shell()).clone();
         let mut cmd = CommandBuilder::new(&shell);
         let working_dir = cwd
             .map(std::path::PathBuf::from)

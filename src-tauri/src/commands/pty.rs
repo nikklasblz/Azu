@@ -11,17 +11,18 @@ pub fn create_pty(state: State<'_, PtyManager>, app: AppHandle, rows: u16, cols:
     std::thread::spawn(move || {
         let mut reader = reader;
         let mut buf = [0u8; 4096];
+        let exit_code: i32;
         loop {
             match reader.read(&mut buf) {
-                Ok(0) => break,
+                Ok(0) => { exit_code = 0; break; }
                 Ok(n) => {
                     let data = String::from_utf8_lossy(&buf[..n]).to_string();
                     let _ = app.emit(&format!("pty-output-{}", pty_id), data);
                 }
-                Err(_) => break,
+                Err(_) => { exit_code = 1; break; }
             }
         }
-        let _ = app.emit(&format!("pty-exit-{}", pty_id), ());
+        let _ = app.emit(&format!("pty-exit-{}", pty_id), exit_code);
     });
 
     Ok(id)

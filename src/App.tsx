@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Nico Arriola <nico.arriola@gmail.com>
 // github.com/nikklasblz/Azu
 
-import { Component, createSignal, onMount, For, Show } from 'solid-js'
+import { Component, createSignal, onMount, onCleanup, For, Show } from 'solid-js'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
@@ -60,6 +60,13 @@ const App: Component = () => {
   const closeTab = (tabId: string) => {
     const remaining = tabs().filter(t => t.id !== tabId)
     if (remaining.length === 0) return // don't close last tab
+    // Kill all PTYs in the closing tab
+    const closing = tabs().find(t => t.id === tabId)
+    if (closing) {
+      Object.values(closing.ptyMap).forEach(ptyId => {
+        pty.close(ptyId).catch(() => {})
+      })
+    }
     setTabs(remaining)
     if (activeTabId() === tabId) {
       setActiveTabId(remaining[0].id)
@@ -92,16 +99,21 @@ const App: Component = () => {
     await config.save('app-state', JSON.stringify(state)).catch(() => {})
   }
 
-  // Auto-save state periodically and on visibility change
-  const autoSave = setInterval(saveState, 30000)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') saveState()
-  })
-
   onMount(async () => {
     initKeybindings({ addTab, closeTab, getActiveTabId: () => activeTabId() })
     await loadPresetsFromDisk()
     await loadSnippets()
+
+    // Auto-save state periodically
+    const autoSaveInterval = setInterval(saveState, 30000)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') saveState()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    onCleanup(() => {
+      clearInterval(autoSaveInterval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    })
 
     // Restore previous state if available
     try {
@@ -183,10 +195,15 @@ const App: Component = () => {
                         renameTab(tab.id, (e.target as HTMLInputElement).value)
                         setEditing(false)
                       }
-                      if (e.key === 'Escape') setEditing(false)
+                      if (e.key === 'Escape') {
+                        (e.target as HTMLInputElement).dataset.cancelled = 'true'
+                        setEditing(false)
+                      }
                     }}
                     onBlur={(e) => {
-                      renameTab(tab.id, e.target.value)
+                      if (e.target.dataset.cancelled !== 'true') {
+                        renameTab(tab.id, e.target.value)
+                      }
                       setEditing(false)
                     }}
                   />

@@ -48,8 +48,9 @@ const GridCell: Component<GridCellProps> = (props) => {
       const id = props.ptyId
       // Delay after native dialog — ConPTY needs time to restore input state
       await new Promise(r => setTimeout(r, 200))
-      // PowerShell: cd works across drives natively
-      await pty.write(id, `cd "${folder}"`)
+      // PowerShell-safe: single quotes prevent variable expansion; works across drives natively
+      const safePath = folder.replace(/'/g, "''")
+      await pty.write(id, `cd '${safePath}'`)
       await new Promise(r => setTimeout(r, 50))
       await pty.write(id, '\r')
     }
@@ -244,10 +245,15 @@ const GridCell: Component<GridCellProps> = (props) => {
                 setCellLabel(props.node.id, (e.target as HTMLInputElement).value)
                 setEditing(false)
               }
-              if (e.key === 'Escape') setEditing(false)
+              if (e.key === 'Escape') {
+                (e.target as HTMLInputElement).dataset.cancelled = 'true'
+                setEditing(false)
+              }
             }}
             onBlur={(e) => {
-              setCellLabel(props.node.id, e.target.value)
+              if (e.target.dataset.cancelled !== 'true') {
+                setCellLabel(props.node.id, e.target.value)
+              }
               setEditing(false)
             }}
           />
