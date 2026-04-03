@@ -1,4 +1,4 @@
-import { Component, For, createEffect, on } from 'solid-js'
+import { Component, For, Show, createEffect, on } from 'solid-js'
 import { createStore, reconcile } from 'solid-js/store'
 import { GridNode, gridStore, updateRatios, findAllLeaves, findNode } from '../../stores/grid'
 import GridCell from './GridCell'
@@ -9,10 +9,9 @@ interface GridProps {
   onRequestPty: (cellId: string) => void
 }
 
-// Computed layout for a leaf cell — absolute position within the grid
+// Computed layout for a leaf cell — position only, node looked up reactively
 interface CellLayout {
   id: string
-  node: GridNode
   x: number  // 0-1 fraction
   y: number
   w: number
@@ -34,7 +33,7 @@ interface ResizerLayout {
 // Traverse grid tree, compute absolute position for each leaf
 function computeCellLayouts(node: GridNode, area = { x: 0, y: 0, w: 1, h: 1 }): CellLayout[] {
   if (node.type === 'leaf') {
-    return [{ id: node.id, node, ...area }]
+    return [{ id: node.id, ...area }]
   }
 
   const ratios = node.ratios || node.children!.map(() => 1 / node.children!.length)
@@ -123,7 +122,7 @@ const GridContainer: Component<GridProps> = (props) => {
 
   createEffect(() => {
     const layouts = computeCellLayouts(gridStore.root)
-    setCells(reconcile(layouts, { key: 'id', merge: true }))
+    setCells(reconcile(layouts, { key: 'id' }))
   })
 
   // Resizers recomputed freely (lightweight divs, no terminal state)
@@ -133,25 +132,33 @@ const GridContainer: Component<GridProps> = (props) => {
     <div class="w-full h-full overflow-hidden relative">
       {/* Terminal cells — stable, keyed by id, never re-mounted */}
       <For each={cells}>
-        {(cell) => (
-          <div
-            style={{
-              position: 'absolute',
-              left: `${cell.x * 100}%`,
-              top: `${cell.y * 100}%`,
-              width: `${cell.w * 100}%`,
-              height: `${cell.h * 100}%`,
-              overflow: 'hidden',
-            }}
-          >
-            <GridCell
-              node={cell.node}
-              ptyId={props.ptyMap[cell.id]}
-              onRequestPty={props.onRequestPty}
-              onSplit={autoCreatePtys}
-            />
-          </div>
-        )}
+        {(cell) => {
+          // Look up node reactively from store — NOT from reconciled cell data
+          const node = () => findNode(gridStore.root, cell.id)
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${cell.x * 100}%`,
+                top: `${cell.y * 100}%`,
+                width: `${cell.w * 100}%`,
+                height: `${cell.h * 100}%`,
+                overflow: 'hidden',
+              }}
+            >
+              <Show when={node()}>
+                {(n) => (
+                  <GridCell
+                    node={n()}
+                    ptyId={props.ptyMap[cell.id]}
+                    onRequestPty={props.onRequestPty}
+                    onSplit={autoCreatePtys}
+                  />
+                )}
+              </Show>
+            </div>
+          )
+        }}
       </For>
 
       {/* Resizers — lightweight, re-render freely */}
