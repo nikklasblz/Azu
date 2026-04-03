@@ -13,6 +13,10 @@ const bufferCache = new Map<string, string>()
 // Track which PTYs already have event listeners (don't double-attach)
 const attachedPtys = new Set<string>()
 
+// Mutable reference to CURRENT xterm instance per ptyId
+// Listeners read from this instead of capturing term by closure
+const activeTerms = new Map<string, XTerm>()
+
 export function destroyTerminal(ptyId: string) {
   bufferCache.delete(ptyId)
   attachedPtys.delete(ptyId)
@@ -90,19 +94,24 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       term?.focus()
     }, 100)
 
+    // Register current term so listeners can find it
+    activeTerms.set(props.ptyId, term)
+
     // Only attach PTY listeners once per ptyId (they survive component re-mounts)
     if (!attachedPtys.has(props.ptyId)) {
       attachedPtys.add(props.ptyId)
+      const ptyId = props.ptyId
 
-      // Listen for PTY output — write to CURRENT term via closure
-      listen<string>(`pty-output-${props.ptyId}`, (event) => {
-        term?.write(event.payload)
+      // Listen for PTY output — reads CURRENT term from activeTerms map
+      listen<string>(`pty-output-${ptyId}`, (event) => {
+        activeTerms.get(ptyId)?.write(event.payload)
       })
 
       // Listen for PTY exit
-      listen<number>(`pty-exit-${props.ptyId}`, (event) => {
+      listen<number>(`pty-exit-${ptyId}`, (event) => {
         const code = event.payload
-        term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
+        const t = activeTerms.get(ptyId)
+        t?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
         if (!document.hasFocus()) {
           try { new Notification('Azu', { body: `Process finished (exit ${code})`, silent: code === 0 }) } catch {}
         }
