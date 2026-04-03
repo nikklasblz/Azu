@@ -1,4 +1,4 @@
-import { createStore, produce, reconcile, unwrap } from 'solid-js/store'
+import { createStore, produce } from 'solid-js/store'
 import { config } from '../lib/tauri-commands'
 
 export interface GridNode {
@@ -64,37 +64,37 @@ function findParent(node: GridNode, targetId: string): GridNode | null {
 }
 
 export function splitHorizontal(cellId: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, cellId, (node) => ({
-    id: genId(),
-    type: 'row' as const,
-    children: [{ ...node }, createLeaf(node.cwd)],
-    ratios: [0.5, 0.5],
-  }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({
+      id: genId(),
+      type: 'row' as const,
+      children: [{ ...node }, createLeaf(node.cwd)],
+      ratios: [0.5, 0.5],
+    }))
+  )
 }
 
 export function splitVertical(cellId: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, cellId, (node) => ({
-    id: genId(),
-    type: 'column' as const,
-    children: [{ ...node }, createLeaf(node.cwd)],
-    ratios: [0.5, 0.5],
-  }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({
+      id: genId(),
+      type: 'column' as const,
+      children: [{ ...node }, createLeaf(node.cwd)],
+      ratios: [0.5, 0.5],
+    }))
+  )
 }
 
 export function removeCell(cellId: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const parent = findParent(raw, cellId)
-  if (!parent || !parent.children) return
-  const remaining = parent.children.find((c) => c.id !== cellId)
-  if (!remaining) return
-  const newRoot = findAndReplace(raw, parent.id, () => ({
-    ...remaining,
-  }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) => {
+    const parent = findParent(root, cellId)
+    if (!parent || !parent.children) return root
+    const remaining = parent.children.find((c) => c.id !== cellId)
+    if (!remaining) return root
+    return findAndReplace(root, parent.id, () => ({
+      ...remaining,
+    }))
+  })
 }
 
 export function savePreset(name: string) {
@@ -106,7 +106,7 @@ export function savePreset(name: string) {
 export function loadPreset(name: string) {
   const preset = gridStore.presets[name]
   if (preset) {
-    setGridStore('root', reconcile(deepClone(preset)))
+    setGridStore('root', deepClone(preset))
     setGridStore('activePreset', name)
   }
 }
@@ -148,46 +148,47 @@ export function resetGrid() {
 }
 
 export function updateRatios(nodeId: string, ratios: number[]) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, nodeId, (node) => ({ ...node, ratios }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, nodeId, (node) => ({ ...node, ratios }))
+  )
 }
 
 export function setCellLabel(cellId: string, label: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, label }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, label }))
+  )
 }
 
 export function setCellTheme(cellId: string, themeId: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, themeId }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, themeId }))
+  )
 }
 
 export function setCellFont(cellId: string, fontFamily: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, fontFamily }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, fontFamily }))
+  )
 }
 
 export function setCellCwd(cellId: string, cwd: string) {
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, cwd }))
-  setGridStore('root', reconcile(newRoot))
+  setGridStore('root', (root) =>
+    findAndReplace(root, cellId, (node) => ({ ...node, cwd }))
+  )
 }
 
 export function swapCells(idA: string, idB: string) {
   if (idA === idB) return
-  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
-  const nodeA = findNode(raw, idA)
-  const nodeB = findNode(raw, idB)
-  if (!nodeA || !nodeB) return
-  const copyA = { ...nodeA }
-  const copyB = { ...nodeB }
-  let result = findAndReplace(raw, idA, () => ({ ...copyB, id: idA }))
-  result = findAndReplace(result, idB, () => ({ ...copyA, id: idB }))
-  setGridStore('root', reconcile(result))
+  setGridStore('root', (root) => {
+    const nodeA = findNode(root, idA)
+    const nodeB = findNode(root, idB)
+    if (!nodeA || !nodeB) return root
+    const copyA = { ...nodeA }
+    const copyB = { ...nodeB }
+    let result = findAndReplace(root, idA, () => ({ ...copyB, id: idA }))
+    result = findAndReplace(result, idB, () => ({ ...copyA, id: idB }))
+    return result
+  })
 }
 
 export function findAllLeaves(node: GridNode): GridNode[] {

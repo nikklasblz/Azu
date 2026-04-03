@@ -147,12 +147,13 @@ describe('Grid Store', () => {
     expect(gridStore.root.themeId).toBe('dracula')
   })
 
-  it('setCellTheme on a nested cell leaves the parent unchanged', () => {
+  it('setCellTheme on a nested cell updates only that cell', () => {
     splitHorizontal(gridStore.root.id)
     const childId = gridStore.root.children![0].id
+    const siblingId = gridStore.root.children![1].id
     setCellTheme(childId, 'monokai')
-    expect(gridStore.root.themeId).toBeUndefined()
     expect(findNode(gridStore.root, childId)?.themeId).toBe('monokai')
+    expect(findNode(gridStore.root, siblingId)?.themeId).toBeUndefined()
   })
 
   // ── Edge case: removeCell on root ────────────────────────────────────────

@@ -55,7 +55,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
   onMount(async () => {
     if (!containerRef) return
 
-    // Check cache — reuse existing terminal if grid re-rendered
+    // Check cache — reuse existing terminal if grid re-rendered after split
     const cached = terminalCache.get(props.ptyId)
     if (cached) {
       term = cached.term
@@ -65,12 +65,14 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       if (term.element) {
         containerRef.appendChild(term.element)
       }
-      // Refit to new container size
+      // Redraw and refit after DOM move
       requestAnimationFrame(() => {
-        fitAddon?.fit()
-        if (term && fitAddon) {
-          const dims = fitAddon.proposeDimensions()
+        if (term) {
+          term.refresh(0, term.rows - 1)
+          fitAddon?.fit()
+          const dims = fitAddon?.proposeDimensions()
           if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
+          term.focus()
         }
       })
       // New resize observer for new container
