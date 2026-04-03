@@ -2,26 +2,20 @@ import { Component, onMount, onCleanup, createEffect, createSignal } from 'solid
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
+import { SerializeAddon } from '@xterm/addon-serialize'
 import { listen } from '@tauri-apps/api/event'
 import { pty, clipboard } from '../../lib/tauri-commands'
 import { themeStore, bgColor } from '../../stores/theme'
 
-// Cache terminal instances by ptyId so splits don't destroy/recreate them
-const terminalCache = new Map<string, {
-  term: XTerm
-  fitAddon: FitAddon
-  searchAddon: SearchAddon
-  cleanupListeners: Array<() => void>
-}>()
+// Save terminal buffer content so it survives grid re-renders
+const bufferCache = new Map<string, string>()
 
-// Permanently destroy a terminal (when tab/pane is closed, not just re-rendered)
+// Track which PTYs already have event listeners (don't double-attach)
+const attachedPtys = new Set<string>()
+
 export function destroyTerminal(ptyId: string) {
-  const cached = terminalCache.get(ptyId)
-  if (cached) {
-    cached.cleanupListeners.forEach(fn => fn())
-    cached.term.dispose()
-    terminalCache.delete(ptyId)
-  }
+  bufferCache.delete(ptyId)
+  attachedPtys.delete(ptyId)
 }
 
 interface TerminalProps {
@@ -42,52 +36,24 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
 
   const focusTerminal = () => term?.focus()
 
-  onCleanup(() => {
-    // Don't destroy terminal — it may be reused after grid re-render
-    // Just detach the resize observer for this container
-    if (containerRef && resizeObserverRef) {
-      resizeObserverRef.disconnect()
-    }
-  })
-
+  let serializeAddon: SerializeAddon | undefined
   let resizeObserverRef: ResizeObserver | undefined
+
+  // On unmount: save buffer content, don't kill PTY
+  onCleanup(() => {
+    if (term && serializeAddon && props.ptyId) {
+      try {
+        bufferCache.set(props.ptyId, serializeAddon.serialize())
+      } catch {}
+    }
+    if (resizeObserverRef) resizeObserverRef.disconnect()
+    if (term) term.dispose()
+  })
 
   onMount(async () => {
     if (!containerRef) return
 
-    // Check cache — reuse existing terminal if grid re-rendered after split
-    const cached = terminalCache.get(props.ptyId)
-    if (cached) {
-      term = cached.term
-      fitAddon = cached.fitAddon
-      searchAddon = cached.searchAddon
-      // Move existing terminal DOM to new container
-      if (term.element) {
-        containerRef.appendChild(term.element)
-      }
-      // Redraw and refit after DOM move
-      requestAnimationFrame(() => {
-        if (term) {
-          term.refresh(0, term.rows - 1)
-          fitAddon?.fit()
-          const dims = fitAddon?.proposeDimensions()
-          if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
-          term.focus()
-        }
-      })
-      // New resize observer for new container
-      resizeObserverRef = new ResizeObserver(() => {
-        fitAddon?.fit()
-        if (term && fitAddon) {
-          const dims = fitAddon.proposeDimensions()
-          if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
-        }
-      })
-      resizeObserverRef.observe(containerRef)
-      return
-    }
-
-    // Create new terminal instance
+    // Always create fresh xterm instance
     term = new XTerm({
       cursorBlink: true,
       fontSize: 14,
@@ -103,38 +69,45 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
 
     fitAddon = new FitAddon()
     searchAddon = new SearchAddon()
+    serializeAddon = new SerializeAddon()
     term.loadAddon(fitAddon)
     term.loadAddon(searchAddon)
+    term.loadAddon(serializeAddon)
     term.open(containerRef)
 
-    // Canvas renderer (default) — no WebGL to avoid GPU context limits with multiple panes
-
     fitAddon.fit()
+
+    // Restore saved buffer content if this terminal was re-mounted (e.g. after split)
+    const savedBuffer = bufferCache.get(props.ptyId)
+    if (savedBuffer) {
+      term.write(savedBuffer)
+      bufferCache.delete(props.ptyId)
+    }
+
     requestAnimationFrame(() => fitAddon?.fit())
     setTimeout(() => {
       fitAddon?.fit()
       term?.focus()
     }, 100)
 
-    // Store in cache for reuse across grid re-renders
-    const cleanupListeners: Array<() => void> = []
-    terminalCache.set(props.ptyId, { term, fitAddon, searchAddon, cleanupListeners })
+    // Only attach PTY listeners once per ptyId (they survive component re-mounts)
+    if (!attachedPtys.has(props.ptyId)) {
+      attachedPtys.add(props.ptyId)
 
-    // Listen for PTY output
-    const unlisten = await listen<string>(`pty-output-${props.ptyId}`, (event) => {
-      term?.write(event.payload)
-    })
-    cleanupListeners.push(() => unlisten())
+      // Listen for PTY output — write to CURRENT term via closure
+      listen<string>(`pty-output-${props.ptyId}`, (event) => {
+        term?.write(event.payload)
+      })
 
-    // Listen for PTY exit
-    const unlistenExit = await listen<number>(`pty-exit-${props.ptyId}`, (event) => {
-      const code = event.payload
-      term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
-      if (!document.hasFocus()) {
-        try { new Notification('Azu', { body: `Process finished (exit ${code})`, silent: code === 0 }) } catch {}
-      }
-    })
-    cleanupListeners.push(() => unlistenExit())
+      // Listen for PTY exit
+      listen<number>(`pty-exit-${props.ptyId}`, (event) => {
+        const code = event.payload
+        term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
+        if (!document.hasFocus()) {
+          try { new Notification('Azu', { body: `Process finished (exit ${code})`, silent: code === 0 }) } catch {}
+        }
+      })
+    }
 
     // Send input to PTY
     term.onData((data) => {
@@ -147,7 +120,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       if (term && fitAddon) {
         const dims = fitAddon.proposeDimensions()
         if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
-        }
+      }
     })
     resizeObserverRef.observe(containerRef)
 
