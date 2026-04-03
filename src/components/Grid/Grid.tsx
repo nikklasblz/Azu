@@ -146,15 +146,14 @@ const GridContainer: Component<GridProps> = (props) => {
                 overflow: 'hidden',
               }}
             >
+              {/* No callback pattern — <Show> keeps children alive when value changes */}
               <Show when={node()}>
-                {(n) => (
-                  <GridCell
-                    node={n()}
-                    ptyId={props.ptyMap[cell.id]}
-                    onRequestPty={props.onRequestPty}
-                    onSplit={autoCreatePtys}
-                  />
-                )}
+                <GridCell
+                  node={node()!}
+                  ptyId={props.ptyMap[cell.id]}
+                  onRequestPty={props.onRequestPty}
+                  onSplit={autoCreatePtys}
+                />
               </Show>
             </div>
           )
