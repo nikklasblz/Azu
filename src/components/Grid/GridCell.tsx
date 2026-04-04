@@ -56,10 +56,6 @@ const GridCell: Component<GridCellProps> = (props) => {
     }
   }
 
-  const handleCwdChange = (newCwd: string) => {
-    setCellCwd(props.node.id, newCwd)
-  }
-
   const abbreviatedCwd = () => {
     const cwd = props.node.cwd
     if (!cwd) return null
@@ -331,17 +327,10 @@ const GridCell: Component<GridCellProps> = (props) => {
             <span class="text-xs animate-pulse">Starting terminal...</span>
           </div>
         }>
-          {(id) => (
-            <TerminalComponent
-              ptyId={id()}
-              themeId={props.node.themeId}
-              onCwdChange={handleCwdChange}
-              onTitle={(title) => {
-                // Auto-rename pane if user hasn't set a custom label
-                if (!props.node.label) setCellLabel(props.node.id, title)
-              }}
-            />
-          )}
+          <TerminalComponent
+            ptyId={props.ptyId!}
+            themeId={props.node.themeId}
+          />
         </Show>
       </div>
     </div>

@@ -9,6 +9,7 @@ import GridContainer from './components/Grid/Grid'
 import { gridStore, setGridStore, loadPresetsFromDisk, resetGrid, findNode, findAllLeaves } from './stores/grid'
 import { themeStore, applyTheme } from './stores/theme'
 import { pty, config } from './lib/tauri-commands'
+import { destroyTerminal } from './components/Terminal/Terminal'
 import { initKeybindings } from './lib/keybindings'
 import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
@@ -64,6 +65,7 @@ const App: Component = () => {
     const closing = tabs().find(t => t.id === tabId)
     if (closing) {
       Object.values(closing.ptyMap).forEach(ptyId => {
+        destroyTerminal(ptyId)
         pty.close(ptyId).catch(() => {})
       })
     }
