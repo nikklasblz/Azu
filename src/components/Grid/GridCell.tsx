@@ -2,7 +2,6 @@ import { Component, Show, For, createSignal } from 'solid-js'
 import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd, swapCells, gridStore, findAllLeaves } from '../../stores/grid'
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
-import TerminalComponent from '../Terminal/Terminal'
 
 interface GridCellProps {
   node: GridNode
@@ -324,23 +323,11 @@ const GridCell: Component<GridCellProps> = (props) => {
         </button>
       </div>
 
-      {/* Terminal — auto-request PTY if missing */}
-      <div class="flex-1 overflow-hidden">
-        <Show when={props.ptyId} fallback={
-          <div class="flex items-center justify-center h-full" style={{ color: colors().textMuted }}>
-            <span class="text-xs animate-pulse">Starting terminal...</span>
-          </div>
-        }>
-          <TerminalComponent
-            ptyId={props.ptyId!}
-            themeId={props.node.themeId}
-            onCwdChange={handleCwdChange}
-            onTitle={(title) => {
-              if (!props.node.label) setCellLabel(props.node.id, title)
-            }}
-          />
-        </Show>
-      </div>
+      {/* Terminal slot — actual terminal rendered by TerminalLayer */}
+      <div
+        class="flex-1 overflow-hidden"
+        data-cell-id={props.node.id}
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { Component, createSignal, onMount, onCleanup, For, Show } from 'solid-js
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
+import TerminalLayer from './components/Terminal/TerminalLayer'
 import { gridStore, setGridStore, loadPresetsFromDisk, resetGrid, findNode, findAllLeaves } from './stores/grid'
 import { themeStore, applyTheme } from './stores/theme'
 import { pty, config } from './lib/tauri-commands'
@@ -23,12 +24,21 @@ interface Tab {
 let tabCounter = 1
 
 const App: Component = () => {
+  let mainRef: HTMLElement | undefined
+
   const [tabs, setTabs] = createSignal<Tab[]>([
     { id: 'tab-1', name: 'Terminal 1', ptyMap: {} }
   ])
   const [activeTabId, setActiveTabId] = createSignal('tab-1')
 
   const activeTab = () => tabs().find(t => t.id === activeTabId())
+
+  // Stable list of terminal entries for TerminalLayer
+  const terminalEntries = () => {
+    const tab = activeTab()
+    if (!tab) return []
+    return Object.entries(tab.ptyMap).map(([cellId, ptyId]) => ({ cellId, ptyId }))
+  }
 
   const handleRequestPty = async (cellId: string) => {
     const node = findNode(gridStore.root, cellId)
@@ -227,12 +237,17 @@ const App: Component = () => {
           title="New tab (Ctrl+T)"
         >+</button>
       </div>
-      <main class="flex-1 overflow-hidden">
+      <main class="flex-1 overflow-hidden relative" ref={mainRef}>
         <Show when={activeTab()}>
           {(tab) => (
             <GridContainer ptyMap={tab().ptyMap} onRequestPty={handleRequestPty} />
           )}
         </Show>
+        {/* Terminals rendered in stable layer — never destroyed by grid changes */}
+        <TerminalLayer
+          entries={terminalEntries()}
+          containerRef={mainRef}
+        />
       </main>
       <StatusBar />
     </div>

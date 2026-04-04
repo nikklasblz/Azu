@@ -36,10 +36,7 @@
       },
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["English"],
-        "installerIcon": "icons/icon.ico",
-        "headerImage": "icons/icon.ico",
-        "createDesktopShortcut": false
+        "languages": ["English"]
       }
     },
     "shortDescription": "AI-Native Terminal",
