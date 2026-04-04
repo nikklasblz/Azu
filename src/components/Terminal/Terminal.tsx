@@ -43,14 +43,15 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
   let serializeAddon: SerializeAddon | undefined
   let resizeObserverRef: ResizeObserver | undefined
 
-  // On unmount: save buffer content, don't kill PTY
+  // On unmount: save buffer, cleanup observers, dispose xterm
   onCleanup(() => {
+    if (resizeObserverRef) resizeObserverRef.disconnect()
     if (term && serializeAddon && props.ptyId) {
       try {
         bufferCache.set(props.ptyId, serializeAddon.serialize())
       } catch {}
     }
-    if (resizeObserverRef) resizeObserverRef.disconnect()
+    // Dispose xterm but DON'T remove from activeTerms — new mount will overwrite
     if (term) term.dispose()
   })
 

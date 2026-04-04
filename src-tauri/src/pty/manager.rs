@@ -32,6 +32,11 @@ impl PtyManager {
 
         let shell = CACHED_SHELL.get_or_init(|| Self::detect_shell()).clone();
         let mut cmd = CommandBuilder::new(&shell);
+        // Skip profile loading for faster startup
+        if cfg!(windows) && (shell.contains("pwsh") || shell.contains("powershell")) {
+            cmd.arg("-NoProfile");
+            cmd.arg("-NoLogo");
+        }
         let working_dir = cwd
             .map(std::path::PathBuf::from)
             .filter(|p| p.is_dir())
