@@ -2,7 +2,7 @@ import { Component, onMount, onCleanup, createEffect } from 'solid-js'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { pty } from '../../lib/tauri-commands'
 import { AzuTerminal } from '../../terminal'
-import { themeStore } from '../../stores/theme'
+import { themeStore, bgColor } from '../../stores/theme'
 import { TerminalTheme } from '../../terminal/types'
 
 export function destroyTerminal(_ptyId: string) {}
@@ -18,7 +18,7 @@ function resolveTheme(themeId?: string): TerminalTheme | undefined {
   const theme = themeStore.themes[id]
   if (!theme) return undefined
   return {
-    background: theme.colors.terminalBg || theme.colors.surface,
+    background: bgColor(theme.colors.terminalBg || theme.colors.surface),
     foreground: theme.colors.terminalFg || theme.colors.text,
     cursor: theme.colors.terminalCursor || theme.colors.accent,
     selectionBackground: theme.colors.terminalSelection || 'rgba(56,139,253,0.3)',
@@ -80,8 +80,10 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     setTimeout(() => term?.focus(), 100)
   })
 
-  // React to theme changes
+  // React to theme + opacity changes
   createEffect(() => {
+    const _alpha = themeStore.bgAlpha // track bgAlpha reactivity
+    const _id = themeStore.activeId   // track theme switch
     const theme = resolveTheme(props.themeId)
     if (term && theme) term.setTheme(theme)
   })

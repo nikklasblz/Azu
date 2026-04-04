@@ -91,7 +91,8 @@ export class CanvasRenderer {
       this.canvas.height = pxHeight
     }
 
-    // Clear with background
+    // Clear — if background has alpha, clear to transparent first
+    ctx.clearRect(0, 0, pxWidth, pxHeight)
     ctx.fillStyle = this.theme.background
     ctx.fillRect(0, 0, pxWidth, pxHeight)
 
