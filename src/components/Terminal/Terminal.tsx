@@ -1,14 +1,11 @@
 import { Component, onMount, onCleanup, createEffect, createSignal } from 'solid-js'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { SearchAddon } from '@xterm/addon-search'
 import { listen } from '@tauri-apps/api/event'
 import { pty, clipboard } from '../../lib/tauri-commands'
 import { themeStore, bgColor } from '../../stores/theme'
-
-export function destroyTerminal(_ptyId: string) {
-  // No-op — terminal cleanup handled by SolidJS onCleanup when tab closes
-}
 
 interface TerminalProps {
   ptyId: string
@@ -28,6 +25,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
 
   const focusTerminal = () => term?.focus()
 
+  // Collect cleanup fns synchronously so SolidJS registers them correctly
   const cleanupFns: Array<() => void> = []
   onCleanup(() => cleanupFns.forEach(fn => fn()))
 
@@ -53,52 +51,66 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     term.loadAddon(searchAddon)
     term.open(containerRef)
 
+    try {
+      const webglAddon = new WebglAddon()
+      term.loadAddon(webglAddon)
+    } catch {
+      // WebGL not available, fallback to canvas
+    }
+
     fitAddon.fit()
+    // Refit after layout settles
     requestAnimationFrame(() => fitAddon?.fit())
     setTimeout(() => {
       fitAddon?.fit()
       term?.focus()
     }, 100)
 
-    // PTY output
+    // Listen for PTY output
     const unlisten = await listen<string>(`pty-output-${props.ptyId}`, (event) => {
       term?.write(event.payload)
     })
     cleanupFns.push(() => unlisten())
 
-    // PTY exit
+    // Listen for PTY exit — notify user
     const unlistenExit = await listen<number>(`pty-exit-${props.ptyId}`, (event) => {
       const code = event.payload
       term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
+      // Flash taskbar if window not focused
       if (!document.hasFocus()) {
         try { new Notification('Azu', { body: `Process finished (exit ${code})`, silent: code === 0 }) } catch {}
       }
     })
     cleanupFns.push(() => unlistenExit())
 
-    // Keyboard input → PTY
+    // Send input to PTY
     term.onData((data) => {
       pty.write(props.ptyId, data)
     })
 
-    // Resize
+    // Handle resize
     const resizeObserver = new ResizeObserver(() => {
       fitAddon?.fit()
       if (term && fitAddon) {
         const dims = fitAddon.proposeDimensions()
-        if (dims) pty.resize(props.ptyId, dims.rows, dims.cols)
+        if (dims) {
+          pty.resize(props.ptyId, dims.rows, dims.cols)
+        }
       }
     })
     resizeObserver.observe(containerRef)
     cleanupFns.push(() => resizeObserver.disconnect())
     cleanupFns.push(() => term?.dispose())
 
-    // Keyboard shortcuts
+    // Handle keyboard shortcuts — return false to prevent xterm from processing
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
+
+      // Block these combos from xterm — let them bubble to global keybindings
       if (e.ctrlKey && !e.shiftKey && (e.key === 't' || e.key === 'w')) return false
       if (e.ctrlKey && e.shiftKey && (e.key === 'H' || e.key === 'V')) return false
 
+      // Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset
       if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
         if (term) { term.options.fontSize = Math.min((term.options.fontSize || 14) + 1, 32); fitAddon?.fit() }
         return false
@@ -120,22 +132,29 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
         }
       }
 
+      // Ctrl+Shift+F — toggle search
       if (e.ctrlKey && e.shiftKey && e.key === 'F') {
         setShowSearch(!showSearch())
         return false
       }
 
+      // Ctrl+V — check for image in clipboard, save to temp file and type path
       if (e.ctrlKey && e.key === 'v') {
         clipboard.saveImageToFile().then((path) => {
-          if (path) pty.write(props.ptyId, path)
+          if (path) {
+            // Image found — type the file path into terminal
+            pty.write(props.ptyId, path)
+          }
+          // If no image, let xterm handle text paste normally (already happened)
         }).catch(() => {})
+        // Return true to also let xterm paste text normally
         return true
       }
 
       return true
     })
 
-    // OSC 7 — working directory
+    // OSC 7 — shell reports current working directory
     term.parser.registerOscHandler(7, (data) => {
       if (props.onCwdChange) {
         let path = data
@@ -147,13 +166,13 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
       return true
     })
 
-    // OSC 0/2 — title
+    // OSC 0/2 — terminal title change (auto-rename pane)
     term.onTitleChange((title) => {
       if (props.onTitle && title) props.onTitle(title)
     })
   })
 
-  // Detect if a hex color is "light"
+  // Detect if a hex color is "light" (for ANSI palette adjustment)
   const isLightBg = (hex: string): boolean => {
     if (!hex || hex.startsWith('rgba')) return false
     const r = parseInt(hex.slice(1, 3), 16)
@@ -162,6 +181,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5
   }
 
+  // ANSI colors for light backgrounds (darker, higher contrast)
   const lightAnsi = {
     black: '#1a1a1a', red: '#c7243a', green: '#1a7a1a', yellow: '#8b6914',
     blue: '#1a3a8a', magenta: '#8a1a6a', cyan: '#0a6a6a', white: '#d0d0d0',
@@ -170,10 +190,12 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     brightCyan: '#1a8a8a', brightWhite: '#fafafa',
   }
 
+  // Reactively update xterm theme — per-pane theme takes priority over global
+  // Also reacts to bgAlpha changes for transparent backgrounds
   createEffect(() => {
     const paneThemeId = props.themeId
     const globalId = themeStore.activeId
-    const _alpha = themeStore.bgAlpha
+    const _alpha = themeStore.bgAlpha // track reactivity
     const theme = paneThemeId ? themeStore.themes[paneThemeId] : themeStore.themes[globalId]
     if (term && theme) {
       const light = isLightBg(theme.colors.terminalBg)
@@ -187,6 +209,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
     }
   })
 
+  // Reactively update font
   createEffect(() => {
     const font = props.fontFamily
     if (term && font) {
@@ -207,6 +230,7 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
         }
       }}
     >
+      {/* Search bar */}
       {showSearch() && (
         <div class="absolute top-0 right-0 z-10 flex items-center gap-1 p-1" style={{ background: 'var(--azu-surface-alt)', border: '1px solid var(--azu-border)', 'border-radius': '0 0 0 4px' }}>
           <input

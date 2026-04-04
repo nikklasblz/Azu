@@ -1,5 +1,5 @@
 import { Component, For, Show, createEffect, on } from 'solid-js'
-import { GridNode, gridStore, updateRatios, findAllLeaves } from '../../stores/grid'
+import { GridNode, gridStore, updateRatios } from '../../stores/grid'
 import GridCell from './GridCell'
 import GridResizer from './GridResizer'
 
@@ -8,19 +8,27 @@ interface GridProps {
   onRequestPty: (cellId: string) => void
 }
 
+function findLeaves(node: GridNode): string[] {
+  if (node.type === 'leaf') return [node.id]
+  return (node.children || []).flatMap(findLeaves)
+}
+
 const GridContainer: Component<GridProps> = (props) => {
+  // Track PTY requests in-flight to prevent duplicates
   const pendingPtyRequests = new Set<string>()
 
+  // Auto-create PTYs for any leaf cell missing one
   const autoCreatePtys = () => {
-    const leaves = findAllLeaves(gridStore.root)
-    for (const leaf of leaves) {
-      if (!props.ptyMap[leaf.id] && !pendingPtyRequests.has(leaf.id)) {
-        pendingPtyRequests.add(leaf.id)
-        props.onRequestPty(leaf.id)
+    const leaves = findLeaves(gridStore.root)
+    for (const leafId of leaves) {
+      if (!props.ptyMap[leafId] && !pendingPtyRequests.has(leafId)) {
+        pendingPtyRequests.add(leafId)
+        props.onRequestPty(leafId)
       }
     }
   }
 
+  // Clear pending requests once ptyMap confirms creation
   createEffect(() => {
     const map = props.ptyMap
     for (const leafId of [...pendingPtyRequests]) {
@@ -28,8 +36,10 @@ const GridContainer: Component<GridProps> = (props) => {
     }
   })
 
+  // Watch for grid changes and auto-create PTYs
+  // Track leaf count instead of JSON.stringify (cheaper)
   createEffect(on(
-    () => findAllLeaves(gridStore.root).length,
+    () => findLeaves(gridStore.root).length,
     () => setTimeout(autoCreatePtys, 50),
     { defer: true }
   ))

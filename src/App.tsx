@@ -9,7 +9,6 @@ import GridContainer from './components/Grid/Grid'
 import { gridStore, setGridStore, loadPresetsFromDisk, resetGrid, findNode, findAllLeaves } from './stores/grid'
 import { themeStore, applyTheme } from './stores/theme'
 import { pty, config } from './lib/tauri-commands'
-import { initPool, createTerminal, removeTerminal, schedulePositionUpdate } from './components/Terminal/TerminalPool'
 import { initKeybindings } from './lib/keybindings'
 import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
@@ -23,8 +22,6 @@ interface Tab {
 let tabCounter = 1
 
 const App: Component = () => {
-  let mainRef: HTMLElement | undefined
-
   const [tabs, setTabs] = createSignal<Tab[]>([
     { id: 'tab-1', name: 'Terminal 1', ptyMap: {} }
   ])
@@ -41,8 +38,6 @@ const App: Component = () => {
         ? { ...t, ptyMap: { ...t.ptyMap, [cellId]: ptyId } }
         : t
     ))
-    // Create terminal in vanilla DOM pool — outside SolidJS
-    setTimeout(() => createTerminal(ptyId, cellId), 50)
   }
 
   const addTab = () => {
@@ -69,7 +64,6 @@ const App: Component = () => {
     const closing = tabs().find(t => t.id === tabId)
     if (closing) {
       Object.values(closing.ptyMap).forEach(ptyId => {
-        removeTerminal(ptyId)
         pty.close(ptyId).catch(() => {})
       })
     }
@@ -231,17 +225,12 @@ const App: Component = () => {
           title="New tab (Ctrl+T)"
         >+</button>
       </div>
-      <main class="flex-1 overflow-hidden relative" ref={(el) => { mainRef = el }}>
+      <main class="flex-1 overflow-hidden">
         <Show when={activeTab()}>
           {(tab) => (
             <GridContainer ptyMap={tab().ptyMap} onRequestPty={handleRequestPty} />
           )}
         </Show>
-        {/* Terminal pool — vanilla DOM, outside SolidJS reactivity */}
-        <div ref={(el) => {
-          if (mainRef) initPool(el, mainRef)
-        }} style={{ position: 'absolute', inset: '0' }}>
-        </div>
       </main>
       <StatusBar />
     </div>
