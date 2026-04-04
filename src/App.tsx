@@ -2,16 +2,14 @@
 // Copyright (c) 2026 Nico Arriola <nico.arriola@gmail.com>
 // github.com/nikklasblz/Azu
 
-import { Component, createSignal, createEffect, onMount, onCleanup, For, Show } from 'solid-js'
-import { createStore, reconcile } from 'solid-js/store'
+import { Component, createSignal, onMount, onCleanup, For, Show } from 'solid-js'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
-import TerminalLayer from './components/Terminal/TerminalLayer'
 import { gridStore, setGridStore, loadPresetsFromDisk, resetGrid, findNode, findAllLeaves } from './stores/grid'
 import { themeStore, applyTheme } from './stores/theme'
 import { pty, config } from './lib/tauri-commands'
-import { destroyTerminal } from './components/Terminal/Terminal'
+import { initPool, createTerminal, removeTerminal, schedulePositionUpdate } from './components/Terminal/TerminalPool'
 import { initKeybindings } from './lib/keybindings'
 import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
@@ -34,16 +32,6 @@ const App: Component = () => {
 
   const activeTab = () => tabs().find(t => t.id === activeTabId())
 
-  // Stable terminal entries — reconcile by ptyId so <For> never destroys existing terminals
-  const [termEntries, setTermEntries] = createStore<{cellId: string, ptyId: string}[]>([])
-
-  createEffect(() => {
-    const tab = activeTab()
-    if (!tab) { setTermEntries(reconcile([])); return }
-    const entries = Object.entries(tab.ptyMap).map(([cellId, ptyId]) => ({ cellId, ptyId }))
-    setTermEntries(reconcile(entries, { key: 'ptyId' }))
-  })
-
   const handleRequestPty = async (cellId: string) => {
     const node = findNode(gridStore.root, cellId)
     const cwd = node?.cwd || undefined
@@ -53,6 +41,8 @@ const App: Component = () => {
         ? { ...t, ptyMap: { ...t.ptyMap, [cellId]: ptyId } }
         : t
     ))
+    // Create terminal in vanilla DOM pool — outside SolidJS
+    setTimeout(() => createTerminal(ptyId, cellId), 50)
   }
 
   const addTab = () => {
@@ -79,7 +69,7 @@ const App: Component = () => {
     const closing = tabs().find(t => t.id === tabId)
     if (closing) {
       Object.values(closing.ptyMap).forEach(ptyId => {
-        destroyTerminal(ptyId)
+        removeTerminal(ptyId)
         pty.close(ptyId).catch(() => {})
       })
     }
@@ -241,17 +231,17 @@ const App: Component = () => {
           title="New tab (Ctrl+T)"
         >+</button>
       </div>
-      <main class="flex-1 overflow-hidden relative" ref={mainRef}>
+      <main class="flex-1 overflow-hidden relative" ref={(el) => { mainRef = el }}>
         <Show when={activeTab()}>
           {(tab) => (
             <GridContainer ptyMap={tab().ptyMap} onRequestPty={handleRequestPty} />
           )}
         </Show>
-        {/* Terminals rendered in stable layer — never destroyed by grid changes */}
-        <TerminalLayer
-          entries={termEntries}
-          containerRef={mainRef}
-        />
+        {/* Terminal pool — vanilla DOM, outside SolidJS reactivity */}
+        <div ref={(el) => {
+          if (mainRef) initPool(el, mainRef)
+        }} style={{ position: 'absolute', inset: '0' }}>
+        </div>
       </main>
       <StatusBar />
     </div>
