@@ -2,7 +2,8 @@
 // Copyright (c) 2026 Nico Arriola <nico.arriola@gmail.com>
 // github.com/nikklasblz/Azu
 
-import { Component, createSignal, onMount, onCleanup, For, Show } from 'solid-js'
+import { Component, createSignal, createEffect, onMount, onCleanup, For, Show } from 'solid-js'
+import { createStore, reconcile } from 'solid-js/store'
 import TitleBar from './components/TitleBar/TitleBar'
 import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
@@ -33,12 +34,15 @@ const App: Component = () => {
 
   const activeTab = () => tabs().find(t => t.id === activeTabId())
 
-  // Stable list of terminal entries for TerminalLayer
-  const terminalEntries = () => {
+  // Stable terminal entries — reconcile by ptyId so <For> never destroys existing terminals
+  const [termEntries, setTermEntries] = createStore<{cellId: string, ptyId: string}[]>([])
+
+  createEffect(() => {
     const tab = activeTab()
-    if (!tab) return []
-    return Object.entries(tab.ptyMap).map(([cellId, ptyId]) => ({ cellId, ptyId }))
-  }
+    if (!tab) { setTermEntries(reconcile([])); return }
+    const entries = Object.entries(tab.ptyMap).map(([cellId, ptyId]) => ({ cellId, ptyId }))
+    setTermEntries(reconcile(entries, { key: 'ptyId' }))
+  })
 
   const handleRequestPty = async (cellId: string) => {
     const node = findNode(gridStore.root, cellId)
@@ -245,7 +249,7 @@ const App: Component = () => {
         </Show>
         {/* Terminals rendered in stable layer — never destroyed by grid changes */}
         <TerminalLayer
-          entries={terminalEntries()}
+          entries={termEntries}
           containerRef={mainRef}
         />
       </main>
