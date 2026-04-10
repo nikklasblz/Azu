@@ -81,3 +81,18 @@ export const pipeline = {
   continue_: (): Promise<void> => invoke('pipeline_continue'),
   getState: (): Promise<any> => invoke('pipeline_get_state'),
 }
+
+export const ssh = {
+  listHosts: (): Promise<any[]> => invoke('ssh_list_hosts'),
+  addHost: (host: any): Promise<any[]> => invoke('ssh_add_host', { host }),
+  removeHost: (hostId: string): Promise<any[]> => invoke('ssh_remove_host', { hostId }),
+  connect: (hostId: string, password: string | null, rows: number, cols: number): Promise<string> =>
+    invoke('ssh_connect', { hostId, password, rows, cols }),
+  disconnect: (connectionId: string): Promise<void> =>
+    invoke('ssh_disconnect', { connectionId }),
+  write: (connectionId: string, data: string): Promise<void> =>
+    invoke('ssh_write', { connectionId, data }),
+  resize: (connectionId: string, rows: number, cols: number): Promise<void> =>
+    invoke('ssh_resize', { connectionId, rows, cols }),
+  listConnections: (): Promise<any[]> => invoke('ssh_list_connections'),
+}
