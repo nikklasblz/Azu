@@ -3,8 +3,10 @@ import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, set
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
 import { pipelineStore, proEnabled } from '../../stores/pipeline'
+import { connections } from '../../stores/ssh'
 import TerminalComponent from '../Terminal/Terminal'
 import PipelineConfigPanel from './PipelineConfigPanel'
+import SshHostPicker from './SshHostPicker'
 
 interface GridCellProps {
   node: GridNode
@@ -20,8 +22,16 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [showLaunchMenu, setShowLaunchMenu] = createSignal(false)
   const [showSwapMenu, setShowSwapMenu] = createSignal(false)
   const [showPipelineConfig, setShowPipelineConfig] = createSignal(false)
+  const [showSshPicker, setShowSshPicker] = createSignal(false)
 
   const paneStatus = () => pipelineStore.paneStates[props.node.id]?.status
+
+  const sshConnection = () => {
+    const s = props.node.ssh
+    if (!s) return null
+    return connections[s.connectionId] || null
+  }
+  const sshStatus = () => sshConnection()?.status
 
   const otherLeaves = () => findAllLeaves(gridStore.root).filter(n => n.id !== props.node.id)
 
@@ -101,9 +111,12 @@ const GridCell: Component<GridCellProps> = (props) => {
   return (
     <div
       class="relative w-full h-full overflow-hidden flex flex-col"
-      style={cellStyle()}
+      style={{
+        ...cellStyle(),
+        ...(sshStatus() === 'connected' ? { 'border-top': '2px solid #3fb950' } : {}),
+      }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false); setShowSshPicker(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -222,6 +235,36 @@ const GridCell: Component<GridCellProps> = (props) => {
           </Show>
         </div>
 
+        {/* SSH button */}
+        <div class="relative">
+          <button
+            class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
+            onClick={() => setShowSshPicker(!showSshPicker())}
+            title={sshConnection() ? `SSH: ${sshConnection()!.user}@${sshConnection()!.host}` : 'SSH connect'}
+            style={{
+              color: sshStatus() === 'connected'
+                ? '#3fb950'
+                : sshStatus() === 'reconnecting'
+                  ? '#d29922'
+                  : toolbarColor(colors()),
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+              <rect x="1" y="3" width="7" height="6" rx="1" />
+              <line x1="8" y1="6" x2="11" y2="6" />
+              <path d="M9.5 4.5L11 6L9.5 7.5" />
+            </svg>
+          </button>
+          <Show when={showSshPicker()}>
+            <SshHostPicker
+              cellId={props.node.id}
+              colors={colors()}
+              onClose={() => setShowSshPicker(false)}
+              onConnected={(connectionId) => setShowSshPicker(false)}
+            />
+          </Show>
+        </div>
+
         {/* Pipeline status indicator */}
         <Show when={paneStatus()}>
           <div
@@ -255,7 +298,12 @@ const GridCell: Component<GridCellProps> = (props) => {
             onDblClick={() => setEditing(true)}
             title={props.node.cwd || 'Double-click to rename'}
           >
-            {props.node.label || abbreviatedCwd() || 'Terminal'}
+            <Show
+              when={sshStatus() === 'connected' && sshConnection()}
+              fallback={props.node.label || abbreviatedCwd() || 'Terminal'}
+            >
+              {sshConnection()!.user}@{sshConnection()!.host}
+            </Show>
             <Show when={props.node.pipeline}>
               {' '}
               <span style={{ color: colors().textMuted, 'font-size': '9px' }}>
@@ -393,6 +441,7 @@ const GridCell: Component<GridCellProps> = (props) => {
           <TerminalComponent
             ptyId={props.ptyId!}
             themeId={props.node.themeId}
+            sshConnectionId={props.node.ssh?.connectionId}
           />
         </Show>
       </div>
