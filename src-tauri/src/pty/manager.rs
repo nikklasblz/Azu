@@ -11,6 +11,9 @@ pub struct PtyInstance {
     pub id: String,
     writer: Box<dyn Write + Send>,
     pair: portable_pty::PtyPair,
+    pub child: Option<Box<dyn portable_pty::Child + Send + Sync>>,
+    pub exit_code: Arc<Mutex<Option<u32>>>,
+    pub output_buffer: Arc<Mutex<Option<String>>>,
 }
 
 pub struct PtyManager {
@@ -43,12 +46,19 @@ impl PtyManager {
             .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| ".".into()));
         cmd.cwd(working_dir);
 
-        pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+        let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
 
         let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
         let id = Uuid::new_v4().to_string();
 
-        let instance = PtyInstance { id: id.clone(), writer, pair };
+        let instance = PtyInstance {
+            id: id.clone(),
+            writer,
+            pair,
+            child: Some(child),
+            exit_code: Arc::new(Mutex::new(None)),
+            output_buffer: Arc::new(Mutex::new(None)),
+        };
         self.instances.lock().unwrap().insert(id.clone(), instance);
 
         Ok(id)
@@ -77,6 +87,101 @@ impl PtyManager {
         let instances = self.instances.lock().unwrap();
         let instance = instances.get(id).ok_or("PTY not found")?;
         instance.pair.master.try_clone_reader().map_err(|e| e.to_string())
+    }
+
+    /// Spawn a program directly as the PTY process (no shell wrapper).
+    /// Used by the pipeline runner to launch agent binaries.
+    pub fn spawn_command_direct(
+        &self,
+        cwd: Option<String>,
+        program: &str,
+        args: &[&str],
+    ) -> Result<String, String> {
+        let pty_system = native_pty_system();
+        let pair = pty_system
+            .openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 })
+            .map_err(|e| e.to_string())?;
+
+        let mut cmd = CommandBuilder::new(program);
+        for arg in args {
+            cmd.arg(arg);
+        }
+        let working_dir = cwd
+            .map(std::path::PathBuf::from)
+            .filter(|p| p.is_dir())
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| ".".into()));
+        cmd.cwd(working_dir);
+
+        let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+
+        let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+        let id = Uuid::new_v4().to_string();
+
+        let instance = PtyInstance {
+            id: id.clone(),
+            writer,
+            pair,
+            child: Some(child),
+            exit_code: Arc::new(Mutex::new(None)),
+            output_buffer: Arc::new(Mutex::new(None)),
+        };
+        self.instances.lock().unwrap().insert(id.clone(), instance);
+
+        Ok(id)
+    }
+
+    pub fn get_exit_code(&self, id: &str) -> Result<Option<u32>, String> {
+        let instances = self.instances.lock().unwrap();
+        let instance = instances.get(id).ok_or("PTY not found")?;
+        let x = Ok(*instance.exit_code.lock().unwrap()); x
+    }
+
+    pub fn wait_for_exit(&self, id: &str) -> Result<(), String> {
+        let mut child = {
+            let mut instances = self.instances.lock().unwrap();
+            let instance = instances.get_mut(id).ok_or("PTY not found")?;
+            instance.child.take().ok_or("Child already taken or not present")?
+        };
+
+        let exit_code_arc = {
+            let instances = self.instances.lock().unwrap();
+            let instance = instances.get(id).ok_or("PTY not found")?;
+            Arc::clone(&instance.exit_code)
+        };
+
+        std::thread::spawn(move || {
+            if let Ok(status) = child.wait() {
+                let code = status.exit_code();
+                *exit_code_arc.lock().unwrap() = Some(code);
+            }
+        });
+
+        Ok(())
+    }
+
+    pub fn enable_capture(&self, id: &str) -> Result<(), String> {
+        let instances = self.instances.lock().unwrap();
+        let instance = instances.get(id).ok_or("PTY not found")?;
+        *instance.output_buffer.lock().unwrap() = Some(String::new());
+        Ok(())
+    }
+
+    pub fn get_captured_output(&self, id: &str) -> Result<Option<String>, String> {
+        let instances = self.instances.lock().unwrap();
+        let instance = instances.get(id).ok_or("PTY not found")?;
+        let x = Ok(instance.output_buffer.lock().unwrap().clone()); x
+    }
+
+    pub fn get_output_buffer_arc(&self, id: &str) -> Result<Arc<Mutex<Option<String>>>, String> {
+        let instances = self.instances.lock().unwrap();
+        let instance = instances.get(id).ok_or("PTY not found")?;
+        Ok(Arc::clone(&instance.output_buffer))
+    }
+
+    pub fn get_exit_code_arc(&self, id: &str) -> Result<Arc<Mutex<Option<u32>>>, String> {
+        let instances = self.instances.lock().unwrap();
+        let instance = instances.get(id).ok_or("PTY not found")?;
+        Ok(Arc::clone(&instance.exit_code))
     }
 
     fn detect_shell() -> String {
@@ -128,5 +233,53 @@ mod tests {
         let mgr = PtyManager::new();
         let result = mgr.close("nonexistent");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_fields_initialized() {
+        let mgr = PtyManager::new();
+        let id = mgr.spawn(24, 80, None).expect("should spawn");
+        let code = mgr.get_exit_code(&id).expect("should get exit code");
+        assert_eq!(code, None);
+        let out = mgr.get_captured_output(&id).expect("should get output");
+        assert_eq!(out, None);
+        mgr.close(&id).expect("should close");
+    }
+
+    #[test]
+    fn test_enable_capture() {
+        let mgr = PtyManager::new();
+        let id = mgr.spawn(24, 80, None).expect("should spawn");
+        mgr.enable_capture(&id).expect("should enable capture");
+        let out = mgr.get_captured_output(&id).expect("should get output");
+        assert_eq!(out, Some(String::new()));
+        mgr.close(&id).expect("should close");
+    }
+
+    #[test]
+    fn test_spawn_command_direct() {
+        let mgr = PtyManager::new();
+        #[cfg(windows)]
+        let (program, args): (&str, &[&str]) = ("cmd.exe", &["/C", "exit 0"]);
+        #[cfg(not(windows))]
+        let (program, args): (&str, &[&str]) = ("true", &[]);
+        let id = mgr.spawn_command_direct(None, program, args).expect("should spawn direct");
+        assert!(!id.is_empty());
+        let _reader = mgr.take_reader(&id).expect("should take reader");
+        mgr.wait_for_exit(&id).expect("should start wait thread");
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let code = mgr.get_exit_code(&id).expect("should get exit code");
+        assert_eq!(code, Some(0));
+        mgr.close(&id).expect("should close");
+    }
+
+    #[test]
+    fn test_wait_for_exit_no_child() {
+        let mgr = PtyManager::new();
+        let id = mgr.spawn(24, 80, None).expect("should spawn");
+        mgr.wait_for_exit(&id).expect("first wait_for_exit should succeed");
+        let result = mgr.wait_for_exit(&id);
+        assert!(result.is_err());
+        mgr.close(&id).expect("should close");
     }
 }

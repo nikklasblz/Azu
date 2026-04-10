@@ -64,3 +64,20 @@ export const env = {
   detect: (): Promise<Array<{ name: string; installed: boolean; version: string | null }>> =>
     invoke('detect_environment'),
 }
+
+export const pipeline = {
+  start: (panes: Array<{ cellId: string; ptyId: string; cwd: string; config: any }>): Promise<void> =>
+    invoke('pipeline_start', { panes: panes.map(p => ({
+      cell_id: p.cellId, pty_id: p.ptyId, cwd: p.cwd, config: {
+        command: p.config.command,
+        prompt: p.config.prompt || null,
+        trigger: p.config.trigger,
+        pipe_mode: p.config.pipeMode,
+        order: p.config.order,
+        timeout: p.config.timeout || null,
+      }
+    })) }),
+  stop: (): Promise<void> => invoke('pipeline_stop'),
+  continue_: (): Promise<void> => invoke('pipeline_continue'),
+  getState: (): Promise<any> => invoke('pipeline_get_state'),
+}

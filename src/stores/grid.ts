@@ -1,6 +1,15 @@
 import { createStore, produce, reconcile, unwrap } from 'solid-js/store'
 import { config } from '../lib/tauri-commands'
 
+export interface PipelineNodeConfig {
+  command: string
+  prompt?: string
+  trigger: 'auto' | 'manual'
+  pipeMode: 'file' | 'text'
+  order: number
+  timeout?: number
+}
+
 export interface GridNode {
   id: string
   type: 'leaf' | 'row' | 'column'
@@ -11,6 +20,7 @@ export interface GridNode {
   themeId?: string
   fontFamily?: string
   cwd?: string
+  pipeline?: PipelineNodeConfig
 }
 
 interface GridState {
@@ -203,6 +213,12 @@ export function findNode(node: GridNode, id: string): GridNode | null {
     if (found) return found
   }
   return null
+}
+
+export function setCellPipeline(cellId: string, pipeline: PipelineNodeConfig | undefined) {
+  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
+  const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, pipeline }))
+  setGridStore('root', reconcile(newRoot))
 }
 
 export { gridStore, setGridStore }

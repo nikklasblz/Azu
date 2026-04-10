@@ -2,7 +2,9 @@ import { Component, Show, For, createSignal } from 'solid-js'
 import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd, swapCells, gridStore, findAllLeaves } from '../../stores/grid'
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
+import { pipelineStore, proEnabled } from '../../stores/pipeline'
 import TerminalComponent from '../Terminal/Terminal'
+import PipelineConfigPanel from './PipelineConfigPanel'
 
 interface GridCellProps {
   node: GridNode
@@ -17,6 +19,9 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [showThemeMenu, setShowThemeMenu] = createSignal(false)
   const [showLaunchMenu, setShowLaunchMenu] = createSignal(false)
   const [showSwapMenu, setShowSwapMenu] = createSignal(false)
+  const [showPipelineConfig, setShowPipelineConfig] = createSignal(false)
+
+  const paneStatus = () => pipelineStore.paneStates[props.node.id]?.status
 
   const otherLeaves = () => findAllLeaves(gridStore.root).filter(n => n.id !== props.node.id)
 
@@ -98,7 +103,7 @@ const GridCell: Component<GridCellProps> = (props) => {
       class="relative w-full h-full overflow-hidden flex flex-col"
       style={cellStyle()}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -217,6 +222,31 @@ const GridCell: Component<GridCellProps> = (props) => {
           </Show>
         </div>
 
+        {/* Pipeline status indicator */}
+        <Show when={paneStatus()}>
+          <div
+            class="w-4 h-5 flex items-center justify-center shrink-0"
+            title={`Pipeline: ${paneStatus()}`}
+          >
+            <div
+              style={{
+                width: '7px',
+                height: '7px',
+                'border-radius': '50%',
+                background: paneStatus() === 'running'
+                  ? '#3fb950'
+                  : paneStatus() === 'done'
+                    ? '#3fb950'
+                    : paneStatus() === 'error'
+                      ? colors().error
+                      : colors().textMuted,
+                animation: paneStatus() === 'running' ? 'pulse 1.2s ease-in-out infinite' : 'none',
+                opacity: paneStatus() === 'done' ? '0.6' : '1',
+              }}
+            />
+          </div>
+        </Show>
+
         {/* Editable label / cwd display */}
         <Show when={editing()} fallback={
           <span
@@ -226,6 +256,12 @@ const GridCell: Component<GridCellProps> = (props) => {
             title={props.node.cwd || 'Double-click to rename'}
           >
             {props.node.label || abbreviatedCwd() || 'Terminal'}
+            <Show when={props.node.pipeline}>
+              {' '}
+              <span style={{ color: colors().textMuted, 'font-size': '9px' }}>
+                step {props.node.pipeline!.order}
+              </span>
+            </Show>
           </span>
         }>
           <input
@@ -303,6 +339,33 @@ const GridCell: Component<GridCellProps> = (props) => {
                 )}
               </For>
             </div>
+          </Show>
+        </div>
+
+        {/* Pipeline config button (Pro) */}
+        <div class="relative">
+          <button
+            class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
+            onClick={() => proEnabled() && setShowPipelineConfig(!showPipelineConfig())}
+            title={proEnabled() ? 'Pipeline config' : 'Pro feature'}
+            style={{
+              color: props.node.pipeline ? colors().accent : toolbarColor(colors()),
+              opacity: proEnabled() ? '1' : '0.3',
+              cursor: proEnabled() ? 'pointer' : 'default',
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="5" cy="5" r="1.5" />
+              <path d="M5 1v1M5 8v1M1 5h1M8 5h1M2.22 2.22l.7.7M7.08 7.08l.7.7M7.78 2.22l-.7.7M2.92 7.08l-.7.7" />
+            </svg>
+          </button>
+          <Show when={showPipelineConfig()}>
+            <PipelineConfigPanel
+              cellId={props.node.id}
+              pipeline={props.node.pipeline}
+              colors={colors()}
+              onClose={() => setShowPipelineConfig(false)}
+            />
           </Show>
         </div>
 

@@ -8,8 +8,9 @@ import StatusBar from './components/StatusBar/StatusBar'
 import GridContainer from './components/Grid/Grid'
 import { gridStore, setGridStore, loadPresetsFromDisk, findNode, findAllLeaves } from './stores/grid'
 import { themeStore, applyTheme } from './stores/theme'
-import { pty, config } from './lib/tauri-commands'
+import { pty, config, pipeline as pipelineCmd } from './lib/tauri-commands'
 import { initKeybindings } from './lib/keybindings'
+import { initPipelineListeners } from './stores/pipeline'
 import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
 
@@ -34,6 +35,26 @@ const App: Component = () => {
     }
   }
 
+  const handleRunPipeline = async () => {
+    const leaves = findAllLeaves(gridStore.root)
+    const map = ptyMap()
+    const panes = leaves
+      .filter(n => n.pipeline)
+      .map(n => ({
+        cellId: n.id,
+        ptyId: map[n.id] || '',
+        cwd: n.cwd || '',
+        config: n.pipeline!,
+      }))
+      .filter(p => p.ptyId)
+    if (panes.length === 0) return
+    await pipelineCmd.start(panes)
+  }
+
+  const handleStopPipeline = async () => {
+    await pipelineCmd.stop()
+  }
+
   const saveState = async () => {
     const state = {
       themeId: themeStore.activeId,
@@ -48,6 +69,7 @@ const App: Component = () => {
       closeTab: () => {},
       getActiveTabId: () => 'main',
     })
+    initPipelineListeners()
     await loadPresetsFromDisk()
     await loadSnippets()
 
@@ -80,7 +102,7 @@ const App: Component = () => {
 
   return (
     <div class="h-screen w-screen flex flex-col bg-surface text-text">
-      <TitleBar onAddTab={() => {}} onLaunchAll={handleLaunchAll} />
+      <TitleBar onAddTab={() => {}} onLaunchAll={handleLaunchAll} onRunPipeline={handleRunPipeline} onStopPipeline={handleStopPipeline} />
       <main class="flex-1 overflow-hidden">
         <GridContainer ptyMap={ptyMap()} onRequestPty={handleRequestPty} />
       </main>

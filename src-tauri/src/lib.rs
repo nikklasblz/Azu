@@ -4,8 +4,10 @@
 
 mod clipboard;
 mod commands;
+mod pipeline;
 mod pty;
 
+use pipeline::PipelineRunner;
 use pty::PtyManager;
 use tauri::Manager;
 
@@ -14,6 +16,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(PtyManager::new())
+        .manage(PipelineRunner::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -42,6 +45,10 @@ pub fn run() {
             commands::config::load_config,
             commands::dialog::pick_folder,
             commands::env::detect_environment,
+            commands::pipeline::pipeline_start,
+            commands::pipeline::pipeline_stop,
+            commands::pipeline::pipeline_continue,
+            commands::pipeline::pipeline_get_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

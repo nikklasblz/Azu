@@ -4,10 +4,14 @@ import ThemePicker from '../ThemePicker/ThemePicker'
 import SnippetPicker from './SnippetPicker'
 import { win } from '../../lib/tauri-commands'
 import { setBgAlpha, themeStore } from '../../stores/theme'
+import { pipelineStore } from '../../stores/pipeline'
+import { findAllLeaves, gridStore } from '../../stores/grid'
 
 interface TitleBarProps {
   onAddTab?: () => void
   onLaunchAll?: (cmd: string) => void
+  onRunPipeline?: () => void
+  onStopPipeline?: () => void
 }
 
 const launchOptions = [
@@ -22,12 +26,71 @@ const TitleBar: Component<TitleBarProps> = (props) => {
   const [pinned, setPinned] = createSignal(false)
   const [opacity, setOpacity] = createSignal(100)
   const [showLaunch, setShowLaunch] = createSignal(false)
+  const [elapsed, setElapsed] = createSignal(0)
+
+  const hasPipelineConfig = () => {
+    const leaves = findAllLeaves(gridStore.root)
+    return leaves.some(n => n.pipeline)
+  }
+
+  let elapsedTimer: ReturnType<typeof setInterval> | undefined
+  const startElapsedTimer = () => {
+    clearInterval(elapsedTimer)
+    elapsedTimer = setInterval(() => {
+      const start = pipelineStore.startedAt
+      if (start) setElapsed(Math.floor((Date.now() - start) / 1000))
+    }, 1000)
+  }
+  const stopElapsedTimer = () => {
+    clearInterval(elapsedTimer)
+    elapsedTimer = undefined
+  }
+
+  const pipelineStatusText = createMemo(() => {
+    const s = pipelineStore.status
+    const order = pipelineStore.currentOrder
+    const max = pipelineStore.maxOrder
+    const secs = elapsed()
+    const mm = String(Math.floor(secs / 60)).padStart(1, '0')
+    const ss = String(secs % 60).padStart(2, '0')
+    const timeStr = secs > 0 ? `${mm}m ${ss}s` : ''
+    if (s === 'idle') return ''
+    if (s === 'running') {
+      const stepPart = max > 0 ? `Step ${order}/${max} · ` : ''
+      return `${stepPart}${timeStr} · running`
+    }
+    if (s === 'done') return `Done${timeStr ? ` · ${timeStr}` : ''}`
+    if (s === 'error') return `Error${timeStr ? ` · ${timeStr}` : ''}`
+    return ''
+  })
+
+  const pipelineStatusColor = createMemo(() => {
+    const s = pipelineStore.status
+    const t = themeStore.themes[themeStore.activeId]?.colors
+    if (s === 'running') return t?.accent || '#58a6ff'
+    if (s === 'done') return '#3fb950'
+    if (s === 'error') return t?.error || '#f85149'
+    return t?.textMuted || '#8b949e'
+  })
 
   const handleClickOutsideLaunch = (e: MouseEvent) => {
     if (launchRef && !launchRef.contains(e.target as Node)) setShowLaunch(false)
   }
   onMount(() => document.addEventListener('mousedown', handleClickOutsideLaunch))
-  onCleanup(() => document.removeEventListener('mousedown', handleClickOutsideLaunch))
+  onCleanup(() => {
+    document.removeEventListener('mousedown', handleClickOutsideLaunch)
+    stopElapsedTimer()
+  })
+
+  createEffect(() => {
+    const s = pipelineStore.status
+    if (s === 'running') {
+      setElapsed(pipelineStore.startedAt ? Math.floor((Date.now() - pipelineStore.startedAt) / 1000) : 0)
+      startElapsedTimer()
+    } else {
+      stopElapsedTimer()
+    }
+  })
 
   const togglePin = async () => {
     const next = !pinned()
@@ -68,41 +131,76 @@ const TitleBar: Component<TitleBarProps> = (props) => {
 
       <PresetSwitcher />
 
-      {/* Launch All — sends command to every open shell */}
-      <div class="relative" ref={launchRef}>
-        <button
-          class="px-2 py-1 text-xs border border-accent/30 rounded hover:bg-accent/10 text-accent flex items-center gap-1"
-          onClick={() => setShowLaunch(!showLaunch())}
-          title="Launch CLI in all terminals"
-        >
-          <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor"><polygon points="2,1 9,5 2,9" /></svg>
-          All
-        </button>
-        <Show when={showLaunch()}>
-          {(() => {
-            const t = () => themeStore.themes[themeStore.activeId]?.colors
-            return (
-              <div
-                class="absolute top-full left-0 rounded shadow-lg z-50 min-w-52 p-1"
-                style={{ background: t()?.surface || '#0d1117', border: `1px solid ${t()?.border || '#30363d'}` }}
+      {/* Pipeline Run or Launch All */}
+      <Show
+        when={hasPipelineConfig()}
+        fallback={
+          <div class="relative" ref={launchRef}>
+            <button
+              class="px-2 py-1 text-xs border border-accent/30 rounded hover:bg-accent/10 text-accent flex items-center gap-1"
+              onClick={() => setShowLaunch(!showLaunch())}
+              title="Launch CLI in all terminals"
+            >
+              <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor"><polygon points="2,1 9,5 2,9" /></svg>
+              All
+            </button>
+            <Show when={showLaunch()}>
+              {(() => {
+                const t = () => themeStore.themes[themeStore.activeId]?.colors
+                return (
+                  <div
+                    class="absolute top-full left-0 rounded shadow-lg z-50 min-w-52 p-1"
+                    style={{ background: t()?.surface || '#0d1117', border: `1px solid ${t()?.border || '#30363d'}` }}
+                  >
+                    <For each={launchOptions}>
+                      {(opt) => (
+                        <button
+                          class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs hover:bg-white/10"
+                          style={{ color: t()?.text || '#c9d1d9' }}
+                          onClick={() => handleLaunchAll(opt.cmd)}
+                        >
+                          <svg width="6" height="6" viewBox="0 0 10 10" fill={t()?.accent || '#58a6ff'}><polygon points="2,1 9,5 2,9" /></svg>
+                          {opt.label}
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                )
+              })()}
+            </Show>
+          </div>
+        }
+      >
+        <div class="flex items-center gap-2">
+          <Show
+            when={pipelineStore.status !== 'running'}
+            fallback={
+              <button
+                class="px-2 py-1 text-xs border border-red-500/40 rounded hover:bg-red-500/10 text-red-400 flex items-center gap-1"
+                onClick={() => props.onStopPipeline?.()}
+                title="Stop pipeline"
               >
-                <For each={launchOptions}>
-                  {(opt) => (
-                    <button
-                      class="flex items-center gap-2 w-full px-3 py-2 text-left text-xs hover:bg-white/10"
-                      style={{ color: t()?.text || '#c9d1d9' }}
-                      onClick={() => handleLaunchAll(opt.cmd)}
-                    >
-                      <svg width="6" height="6" viewBox="0 0 10 10" fill={t()?.accent || '#58a6ff'}><polygon points="2,1 9,5 2,9" /></svg>
-                      {opt.label}
-                    </button>
-                  )}
-                </For>
-              </div>
-            )
-          })()}
-        </Show>
-      </div>
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor"><rect x="2" y="2" width="6" height="6" rx="0.5" /></svg>
+                Stop
+              </button>
+            }
+          >
+            <button
+              class="px-2 py-1 text-xs border border-accent/30 rounded hover:bg-accent/10 text-accent flex items-center gap-1"
+              onClick={() => props.onRunPipeline?.()}
+              title="Run pipeline"
+            >
+              <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor"><polygon points="2,1 9,5 2,9" /></svg>
+              Pipeline
+            </button>
+          </Show>
+          <Show when={pipelineStatusText()}>
+            <span class="text-[10px]" style={{ color: pipelineStatusColor() }}>
+              {pipelineStatusText()}
+            </span>
+          </Show>
+        </div>
+      </Show>
 
       <div class="flex-1" data-tauri-drag-region />
 
