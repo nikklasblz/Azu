@@ -10,6 +10,7 @@ mod ssh;
 
 use pipeline::PipelineRunner;
 use pty::PtyManager;
+use ssh::SshManager;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -20,6 +21,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(PtyManager::new())
         .manage(PipelineRunner::new())
+        .manage(SshManager::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -52,6 +54,14 @@ pub fn run() {
             commands::pipeline::pipeline_stop,
             commands::pipeline::pipeline_continue,
             commands::pipeline::pipeline_get_state,
+            commands::ssh::ssh_list_hosts,
+            commands::ssh::ssh_add_host,
+            commands::ssh::ssh_remove_host,
+            commands::ssh::ssh_connect,
+            commands::ssh::ssh_disconnect,
+            commands::ssh::ssh_write,
+            commands::ssh::ssh_resize,
+            commands::ssh::ssh_list_connections,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
