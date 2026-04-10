@@ -1,6 +1,6 @@
 import { Component, onMount, onCleanup, createEffect } from 'solid-js'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { pty } from '../../lib/tauri-commands'
+import { pty, ssh as sshCmd } from '../../lib/tauri-commands'
 import { AzuTerminal } from '../../terminal'
 import { themeStore, bgColor } from '../../stores/theme'
 import { TerminalTheme } from '../../terminal/types'
@@ -10,6 +10,7 @@ export function destroyTerminal(_ptyId: string) {}
 interface TerminalProps {
   ptyId: string
   themeId?: string
+  sshConnectionId?: string
 }
 
 // Convert Azu theme to AzuTerminal theme
@@ -61,20 +62,32 @@ const TerminalComponent: Component<TerminalProps> = (props) => {
 
     term.attach(containerRef)
 
-    const dims = term.fit()
-    pty.resize(props.ptyId, dims.rows, dims.cols).catch(() => {})
+    const isSSH = !!props.sshConnectionId
+    const outputEvent = isSSH ? `ssh-output-${props.sshConnectionId}` : `pty-output-${props.ptyId}`
+    const exitEvent = isSSH ? `ssh-exit-${props.sshConnectionId}` : `pty-exit-${props.ptyId}`
 
-    unlistenOutput = await listen<string>(`pty-output-${props.ptyId}`, (event) => {
+    const dims = term.fit()
+    if (isSSH) {
+      sshCmd.resize(props.sshConnectionId!, dims.rows, dims.cols).catch(() => {})
+    } else {
+      pty.resize(props.ptyId, dims.rows, dims.cols).catch(() => {})
+    }
+
+    unlistenOutput = await listen<string>(outputEvent, (event) => {
       term?.write(event.payload)
     })
 
-    unlistenExit = await listen<number>(`pty-exit-${props.ptyId}`, (event) => {
+    unlistenExit = await listen<number>(exitEvent, (event) => {
       const code = event.payload
       term?.write(`\r\n\x1b[${code === 0 ? '32' : '31'}m[Process exited with code ${code}]\x1b[0m\r\n`)
     })
 
     term.onData((data) => {
-      pty.write(props.ptyId, data)
+      if (isSSH) {
+        sshCmd.write(props.sshConnectionId!, data)
+      } else {
+        pty.write(props.ptyId, data)
+      }
     })
 
     setTimeout(() => term?.focus(), 100)
