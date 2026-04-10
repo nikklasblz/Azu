@@ -21,6 +21,10 @@ export interface GridNode {
   fontFamily?: string
   cwd?: string
   pipeline?: PipelineNodeConfig
+  ssh?: {
+    hostId: string
+    connectionId: string
+  }
 }
 
 interface GridState {
@@ -218,6 +222,12 @@ export function findNode(node: GridNode, id: string): GridNode | null {
 export function setCellPipeline(cellId: string, pipeline: PipelineNodeConfig | undefined) {
   const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
   const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, pipeline }))
+  setGridStore('root', reconcile(newRoot))
+}
+
+export function setCellSsh(cellId: string, ssh: { hostId: string; connectionId: string } | undefined) {
+  const raw = JSON.parse(JSON.stringify(unwrap(gridStore.root)))
+  const newRoot = findAndReplace(raw, cellId, (node) => ({ ...node, ssh }))
   setGridStore('root', reconcile(newRoot))
 }
 
