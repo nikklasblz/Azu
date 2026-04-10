@@ -6,6 +6,7 @@ mod clipboard;
 mod commands;
 mod pipeline;
 mod pty;
+mod ssh;
 
 use pipeline::PipelineRunner;
 use pty::PtyManager;
