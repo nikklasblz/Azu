@@ -3,6 +3,7 @@ import { gridStore } from '../../stores/grid'
 import { themeStore } from '../../stores/theme'
 import { env } from '../../lib/tauri-commands'
 import { updateAvailable, updateVersion, downloading, progress, readyToRestart, updateError, downloadAndInstall, restartApp } from '../../stores/updater'
+import { connections } from '../../stores/ssh'
 
 interface ToolStatus {
   name: string
@@ -18,6 +19,7 @@ function countLeaves(node: any): number {
 const StatusBar: Component = () => {
   let panelRef: HTMLDivElement | undefined
   const paneCount = createMemo(() => countLeaves(gridStore.root))
+  const sshCount = () => Object.values(connections).filter(c => c.status === 'connected').length
   const [showEnv, setShowEnv] = createSignal(false)
   const [tools, setTools] = createSignal<ToolStatus[]>([])
   const [loading, setLoading] = createSignal(false)
@@ -43,6 +45,9 @@ const StatusBar: Component = () => {
       <span class="text-success">● Ready</span>
       <span>{paneCount()} pane{paneCount() > 1 ? 's' : ''}</span>
       <span>{gridStore.activePreset || 'No preset'}</span>
+      <Show when={sshCount() > 0}>
+        <span style={{ color: 'var(--azu-accent)' }}>SSH: {sshCount()}</span>
+      </Show>
 
       {/* Environment detection */}
       <div class="relative" ref={panelRef}>

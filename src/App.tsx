@@ -11,6 +11,7 @@ import { themeStore, applyTheme } from './stores/theme'
 import { pty, config, pipeline as pipelineCmd } from './lib/tauri-commands'
 import { initKeybindings } from './lib/keybindings'
 import { initPipelineListeners } from './stores/pipeline'
+import { initSshListeners } from './stores/ssh'
 import { initUpdater } from './stores/updater'
 import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
@@ -71,6 +72,7 @@ const App: Component = () => {
       getActiveTabId: () => 'main',
     })
     initPipelineListeners()
+    initSshListeners()
     initUpdater()
     await loadPresetsFromDisk()
     await loadSnippets()
