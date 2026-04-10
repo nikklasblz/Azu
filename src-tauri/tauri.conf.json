@@ -23,11 +23,23 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://github.com https://objects.githubusercontent.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdBNTEyMzlBQjNEQ0RFMzAKUldRdzN0eXptaU5SZWdvUWU1WjdzY3F5Y1pZNTVnZThnem1wcitrVUlnSXMzbWV6N3RQZzVxRWsK",
+      "endpoints": [
+        "https://github.com/nikklasblz/Azu/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": ["icons/icon.ico"],
     "windows": {

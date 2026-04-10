@@ -2,6 +2,7 @@ import { Component, createMemo, createSignal, Show, For, onMount, onCleanup } fr
 import { gridStore } from '../../stores/grid'
 import { themeStore } from '../../stores/theme'
 import { env } from '../../lib/tauri-commands'
+import { updateAvailable, updateVersion, downloading, progress, readyToRestart, updateError, downloadAndInstall, restartApp } from '../../stores/updater'
 
 interface ToolStatus {
   name: string
@@ -84,6 +85,37 @@ const StatusBar: Component = () => {
       </div>
 
       <div class="flex-1" />
+
+      {/* Update badge */}
+      <Show when={updateError()}>
+        <span style={{ color: 'var(--azu-error)', cursor: 'default' }}>{updateError()}</span>
+      </Show>
+      <Show when={readyToRestart()}>
+        <button
+          class="hover:underline"
+          style={{ color: 'var(--azu-accent)', cursor: 'pointer', background: 'none', border: 'none', padding: '0', font: 'inherit' }}
+          onClick={restartApp}
+          title="Restart to apply update"
+        >
+          Restart to update
+        </button>
+      </Show>
+      <Show when={downloading() && !readyToRestart()}>
+        <span style={{ color: 'var(--azu-accent)' }}>
+          ↑ {progress()}%
+        </span>
+      </Show>
+      <Show when={updateAvailable() && !downloading() && !readyToRestart()}>
+        <button
+          class="hover:underline"
+          style={{ color: 'var(--azu-accent)', cursor: 'pointer', background: 'none', border: 'none', padding: '0', font: 'inherit' }}
+          onClick={downloadAndInstall}
+          title={`Update to ${updateVersion()}`}
+        >
+          ↑ v{updateVersion()}
+        </button>
+      </Show>
+
       <span>{themeStore.activeId}</span>
       <span>UTF-8</span>
     </footer>
