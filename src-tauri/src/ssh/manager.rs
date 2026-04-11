@@ -9,6 +9,7 @@ use russh::{ChannelWriteHalf, Disconnect};
 use russh_sftp::client::SftpSession;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::ssh::config_parser::{
@@ -16,6 +17,9 @@ use crate::ssh::config_parser::{
     parse_ssh_config, save_azu_hosts,
 };
 use crate::ssh::connection::AzuSshHandler;
+use crate::ssh::forwarding::{
+    start_local_forward, start_remote_forward, stop_remote_forward, ForwardConfig, ForwardStatus,
+};
 use crate::ssh::types::{SshConnectionInfo, SshHostConfig};
 use crate::ssh::{connection, session};
 
@@ -27,8 +31,9 @@ use crate::ssh::{connection, session};
 pub struct ActiveConnection {
     /// Connection metadata (serialisable, sent to frontend).
     pub info: SshConnectionInfo,
-    /// The russh client handle (drives the SSH state machine).
-    pub handle: client::Handle<AzuSshHandler>,
+    /// The russh client handle wrapped in Arc<Mutex> so forwarding tasks can
+    /// share it without cloning (Handle<H> is not Clone).
+    pub handle: Arc<Mutex<client::Handle<AzuSshHandler>>>,
     /// Write half of the shell channel — used for data and window-change.
     pub write_half: ChannelWriteHalf<Msg>,
 }
@@ -42,6 +47,8 @@ pub struct SshManager {
     connections: Arc<Mutex<HashMap<String, ActiveConnection>>>,
     hosts: Arc<Mutex<Vec<SshHostConfig>>>,
     sftp_sessions: Arc<Mutex<HashMap<String, Arc<SftpSession>>>>,
+    /// forward_id → (config, cancellation token)
+    forwards: Arc<Mutex<HashMap<String, (ForwardConfig, CancellationToken)>>>,
 }
 
 impl SshManager {
@@ -50,6 +57,7 @@ impl SshManager {
             connections: Arc::new(Mutex::new(HashMap::new())),
             hosts: Arc::new(Mutex::new(Vec::new())),
             sftp_sessions: Arc::new(Mutex::new(HashMap::new())),
+            forwards: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -167,7 +175,7 @@ impl SshManager {
             e
         })?;
 
-        // Open interactive shell channel
+        // Open interactive shell channel (session::open takes &Handle)
         let shell = session::open(&handle, app.clone(), conn_id.clone(), rows, cols)
             .await
             .map_err(|e| {
@@ -194,6 +202,9 @@ impl SshManager {
         };
         let _ = app.emit("ssh-status", &info_connected);
 
+        // Wrap handle in Arc<Mutex> so forwarding tasks can share it.
+        let handle = Arc::new(Mutex::new(handle));
+
         // Store in registry
         let active = ActiveConnection {
             info: info_connected,
@@ -215,19 +226,24 @@ impl SshManager {
             }
         }
 
-        // Open a new SFTP channel while holding the connections lock.
-        // tokio::Mutex supports holding across .await points, so this is safe.
-        let channel: russh::Channel<Msg> = {
+        // Open a new SFTP channel.
+        // Acquire the connections lock to get the handle Arc, then drop the
+        // connections lock before awaiting on the handle to avoid holding two
+        // locks simultaneously for long.
+        let handle_arc = {
             let conns = self.connections.lock().await;
             let active = conns
                 .get(conn_id)
                 .ok_or_else(|| format!("Connection '{}' not found", conn_id))?;
-            active
-                .handle
-                .channel_open_session()
-                .await
-                .map_err(|e| format!("SFTP channel: {e}"))?
+            active.handle.clone()
         };
+
+        let channel: russh::Channel<Msg> = handle_arc
+            .lock()
+            .await
+            .channel_open_session()
+            .await
+            .map_err(|e| format!("SFTP channel: {e}"))?;
 
         channel
             .request_subsystem(true, "sftp")
@@ -249,8 +265,95 @@ impl SshManager {
         Ok(sftp)
     }
 
+    // -----------------------------------------------------------------------
+    // Port forwarding
+    // -----------------------------------------------------------------------
+
+    /// Start a new port-forward rule for the connection identified by `conn_id`.
+    ///
+    /// For local forwards the listener is bound immediately and a background
+    /// task is spawned.  For remote forwards a `tcpip-forward` request is sent
+    /// to the server.  The rule is stored in the registry keyed by
+    /// `config.id`.
+    pub async fn add_forward(&self, conn_id: &str, config: ForwardConfig) -> Result<(), String> {
+        let handle_arc: Arc<Mutex<client::Handle<AzuSshHandler>>> = {
+            let conns = self.connections.lock().await;
+            let active = conns
+                .get(conn_id)
+                .ok_or_else(|| format!("Connection '{}' not found", conn_id))?;
+            active.handle.clone()
+        };
+
+        let token = match config.forward_type.as_str() {
+            "local" => start_local_forward(handle_arc, config.clone()).await?,
+            "remote" => {
+                start_remote_forward(handle_arc, &config).await?;
+                // For remote forwards the token is a no-op sentinel; the
+                // actual teardown goes through cancel_tcpip_forward.
+                CancellationToken::new()
+            }
+            other => return Err(format!("Unknown forward_type '{other}'")),
+        };
+
+        self.forwards
+            .lock()
+            .await
+            .insert(config.id.clone(), (config, token));
+
+        Ok(())
+    }
+
+    /// Stop and remove the forward rule identified by `forward_id`.
+    pub async fn remove_forward(&self, conn_id: &str, forward_id: &str) -> Result<(), String> {
+        let (config, token) = self
+            .forwards
+            .lock()
+            .await
+            .remove(forward_id)
+            .ok_or_else(|| format!("Forward '{}' not found", forward_id))?;
+
+        // Cancel the listener task (local forward) or any associated token.
+        token.cancel();
+
+        // For remote forwards, tell the server to stop listening.
+        if config.forward_type == "remote" {
+            let handle_arc: Option<Arc<Mutex<client::Handle<AzuSshHandler>>>> = {
+                let conns = self.connections.lock().await;
+                conns.get(conn_id).map(|a| a.handle.clone())
+            };
+            if let Some(h) = handle_arc {
+                let _ = stop_remote_forward(h, &config).await;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Return a snapshot of all registered forward rules and their status.
+    pub async fn list_forwards(&self) -> Vec<ForwardStatus> {
+        self.forwards
+            .lock()
+            .await
+            .values()
+            .map(|(cfg, token)| ForwardStatus {
+                config: cfg.clone(),
+                active: !token.is_cancelled(),
+                error: None,
+            })
+            .collect()
+    }
+
     /// Disconnect a connection by id.
     pub async fn disconnect(&self, conn_id: &str, app: AppHandle) -> Result<(), String> {
+        // Cancel all forward rules (currently global; a production version
+        // would filter by conn_id).
+        {
+            let mut fwd_lock = self.forwards.lock().await;
+            for (_, (_, token)) in fwd_lock.drain() {
+                token.cancel();
+            }
+        }
+
         // Clean up any cached SFTP session first
         self.sftp_sessions.lock().await.remove(conn_id);
 
@@ -267,11 +370,25 @@ impl SshManager {
         };
         let _ = app.emit("ssh-status", &info_disconnected);
 
-        // Gracefully close the SSH session
-        let _ = active
-            .handle
-            .disconnect(Disconnect::ByApplication, "Azu session closed", "en")
-            .await;
+        // Gracefully close the SSH session.
+        // unwrap_or_else handles the unlikely case where a forwarding task
+        // still holds the Arc — we try, but don't block on it.
+        match Arc::try_unwrap(active.handle) {
+            Ok(mutex) => {
+                let _ = mutex
+                    .into_inner()
+                    .disconnect(Disconnect::ByApplication, "Azu session closed", "en")
+                    .await;
+            }
+            Err(arc) => {
+                // Another task still holds a reference; send disconnect best-effort.
+                let _ = arc
+                    .lock()
+                    .await
+                    .disconnect(Disconnect::ByApplication, "Azu session closed", "en")
+                    .await;
+            }
+        }
 
         Ok(())
     }

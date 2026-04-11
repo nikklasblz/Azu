@@ -4,6 +4,7 @@
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 
+use crate::ssh::forwarding::{ForwardConfig, ForwardStatus};
 use crate::ssh::manager::SshManager;
 use crate::ssh::sftp::{self, FileEntry};
 use crate::ssh::types::{SshConnectionInfo, SshHostConfig};
@@ -180,4 +181,38 @@ pub async fn sftp_rename(
 ) -> Result<(), String> {
     let sftp = manager.open_sftp(&connection_id).await?;
     sftp::rename(&sftp, &old_path, &new_path).await
+}
+
+// ---------------------------------------------------------------------------
+// Port forwarding commands
+// ---------------------------------------------------------------------------
+
+/// Start a port-forward rule on an active SSH connection.
+///
+/// `config.forward_type` must be `"local"` or `"remote"`.
+#[tauri::command]
+pub async fn ssh_add_forward(
+    connection_id: String,
+    config: ForwardConfig,
+    manager: State<'_, SshManager>,
+) -> Result<(), String> {
+    manager.add_forward(&connection_id, config).await
+}
+
+/// Stop and remove a port-forward rule by its `forward_id`.
+#[tauri::command]
+pub async fn ssh_remove_forward(
+    connection_id: String,
+    forward_id: String,
+    manager: State<'_, SshManager>,
+) -> Result<(), String> {
+    manager.remove_forward(&connection_id, &forward_id).await
+}
+
+/// List all registered port-forward rules with their current status.
+#[tauri::command]
+pub async fn ssh_list_forwards(
+    manager: State<'_, SshManager>,
+) -> Result<Vec<ForwardStatus>, String> {
+    Ok(manager.list_forwards().await)
 }

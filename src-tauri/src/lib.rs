@@ -69,6 +69,9 @@ pub fn run() {
             commands::ssh::sftp_mkdir,
             commands::ssh::sftp_remove,
             commands::ssh::sftp_rename,
+            commands::ssh::ssh_add_forward,
+            commands::ssh::ssh_remove_forward,
+            commands::ssh::ssh_list_forwards,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
