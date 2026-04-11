@@ -109,4 +109,12 @@ export const ssh = {
     invoke('sftp_remove', { connectionId, path }),
   sftpRename: (connectionId: string, oldPath: string, newPath: string): Promise<void> =>
     invoke('sftp_rename', { connectionId, oldPath, newPath }),
+
+  // Port forwarding
+  addForward: (connectionId: string, config: any): Promise<void> =>
+    invoke('ssh_add_forward', { connectionId, config }),
+  removeForward: (connectionId: string, forwardId: string): Promise<void> =>
+    invoke('ssh_remove_forward', { connectionId, forwardId }),
+  listForwards: (): Promise<any[]> =>
+    invoke('ssh_list_forwards'),
 }

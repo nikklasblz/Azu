@@ -22,10 +22,24 @@ export interface SshConnection {
   connectedAt?: string
 }
 
+export interface PortForward {
+  config: {
+    id: string
+    forward_type: string  // "local" | "remote"
+    local_host: string
+    local_port: number
+    remote_host: string
+    remote_port: number
+  }
+  active: boolean
+  error?: string
+}
+
 const [hosts, setHosts] = createSignal<SshHost[]>([])
 const [connections, setConnections] = createStore<Record<string, SshConnection>>({})
+const [forwards, setForwards] = createSignal<PortForward[]>([])
 
-export { hosts, connections }
+export { hosts, connections, forwards }
 
 export async function loadHosts(): Promise<void> {
   try {
@@ -81,4 +95,29 @@ export function initSshListeners() {
       connectedAt: info.connectedAt,
     })
   })
+}
+
+export async function addForward(connectionId: string, type: 'local' | 'remote', localPort: number, remoteHost: string, remotePort: number) {
+  const config = {
+    id: `fwd-${Date.now()}`,
+    forward_type: type,
+    local_host: '127.0.0.1',
+    local_port: localPort,
+    remote_host: remoteHost,
+    remote_port: remotePort,
+  }
+  await sshCmd.addForward(connectionId, config)
+  await refreshForwards()
+}
+
+export async function removeForward(connectionId: string, forwardId: string) {
+  await sshCmd.removeForward(connectionId, forwardId)
+  await refreshForwards()
+}
+
+export async function refreshForwards() {
+  try {
+    const result = await sshCmd.listForwards()
+    setForwards(result)
+  } catch { setForwards([]) }
 }
