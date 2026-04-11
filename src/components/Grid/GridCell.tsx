@@ -4,7 +4,7 @@ import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, set
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
 import { pipelineStore, proEnabled } from '../../stores/pipeline'
-import { connections } from '../../stores/ssh'
+import { connections, forwards, addForward, removeForward } from '../../stores/ssh'
 import TerminalComponent from '../Terminal/Terminal'
 import PipelineConfigPanel from './PipelineConfigPanel'
 import SshHostPicker from './SshHostPicker'
@@ -25,6 +25,10 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [showPipelineConfig, setShowPipelineConfig] = createSignal(false)
   const [showSshPicker, setShowSshPicker] = createSignal(false)
   const [showSftp, setShowSftp] = createSignal(false)
+  const [showForwards, setShowForwards] = createSignal(false)
+  const [fwdType, setFwdType] = createSignal<'local' | 'remote'>('local')
+  const [fwdLocalPort, setFwdLocalPort] = createSignal('')
+  const [fwdRemoteHostPort, setFwdRemoteHostPort] = createSignal('')
 
   const paneStatus = () => pipelineStore.paneStates[props.node.id]?.status
 
@@ -118,7 +122,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         ...(sshStatus() === 'connected' ? { 'border-top': '2px solid #3fb950' } : {}),
       }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false); setShowSshPicker(false); setShowSftp(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false); setShowSshPicker(false); setShowSftp(false); setShowForwards(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -283,6 +287,101 @@ const GridCell: Component<GridCellProps> = (props) => {
               <line x1="6" y1="5" x2="6" y2="9" />
             </svg>
           </button>
+        </Show>
+
+        {/* Port forwards button — only when SSH connected */}
+        <Show when={sshStatus() === 'connected'}>
+          <div class="relative">
+            <button
+              class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
+              style={{ color: forwards().length > 0 ? colors().accent : toolbarColor(colors()) }}
+              onClick={() => setShowForwards(!showForwards())}
+              title="Port forwards"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+                <path d="M1 6h10M8 3l3 3-3 3" />
+              </svg>
+            </button>
+            <Show when={showForwards()}>
+              <div
+                class="absolute top-full left-0 mt-1 rounded shadow-lg z-50 min-w-64 p-2"
+                style={{
+                  background: colors().surface,
+                  border: `1px solid ${colors().border}`,
+                }}
+              >
+                <div class="px-1 py-1 text-[10px] uppercase tracking-wider" style={{ color: colors().textMuted }}>
+                  Port Forwards
+                </div>
+                {/* Active forwards list */}
+                <Show when={forwards().length === 0}>
+                  <div class="px-1 py-1 text-xs" style={{ color: colors().textMuted }}>No active forwards</div>
+                </Show>
+                <For each={forwards()}>
+                  {(fwd) => (
+                    <div class="flex items-center gap-1 px-1 py-0.5">
+                      <span class="text-xs flex-1" style={{ color: fwd.active ? colors().accent : colors().textMuted }}>
+                        {fwd.config.forward_type === 'local' ? 'L' : 'R'}:{fwd.config.local_port}→{fwd.config.remote_host}:{fwd.config.remote_port}
+                        {fwd.error && <span style={{ color: colors().error }}> ({fwd.error})</span>}
+                      </span>
+                      <button
+                        class="px-1 text-xs hover:opacity-80"
+                        style={{ color: colors().error }}
+                        title="Remove forward"
+                        onClick={() => removeForward(props.node.ssh!.connectionId, fwd.config.id)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </For>
+                {/* Add new forward form */}
+                <div style={{ 'border-top': `1px solid ${colors().border}`, 'margin-top': '4px', 'padding-top': '4px' }}>
+                  <div class="flex gap-1 items-center flex-wrap">
+                    <select
+                      class="text-xs px-1 py-0.5 rounded"
+                      style={{ background: colors().surfaceAlt, color: colors().text, border: `1px solid ${colors().border}` }}
+                      value={fwdType()}
+                      onChange={(e) => setFwdType(e.currentTarget.value as 'local' | 'remote')}
+                    >
+                      <option value="local">Local</option>
+                      <option value="remote">Remote</option>
+                    </select>
+                    <input
+                      class="text-xs px-1 py-0.5 rounded w-16"
+                      style={{ background: colors().surfaceAlt, color: colors().text, border: `1px solid ${colors().border}` }}
+                      placeholder="L-port"
+                      value={fwdLocalPort()}
+                      onInput={(e) => setFwdLocalPort(e.currentTarget.value)}
+                    />
+                    <input
+                      class="text-xs px-1 py-0.5 rounded flex-1 min-w-24"
+                      style={{ background: colors().surfaceAlt, color: colors().text, border: `1px solid ${colors().border}` }}
+                      placeholder="host:port"
+                      value={fwdRemoteHostPort()}
+                      onInput={(e) => setFwdRemoteHostPort(e.currentTarget.value)}
+                    />
+                    <button
+                      class="text-xs px-2 py-0.5 rounded hover:opacity-80"
+                      style={{ background: colors().accent, color: colors().surface }}
+                      onClick={async () => {
+                        const localPort = parseInt(fwdLocalPort(), 10)
+                        const parts = fwdRemoteHostPort().split(':')
+                        const remoteHost = parts.slice(0, -1).join(':') || parts[0]
+                        const remotePort = parseInt(parts[parts.length - 1], 10)
+                        if (!localPort || !remoteHost || !remotePort) return
+                        await addForward(props.node.ssh!.connectionId, fwdType(), localPort, remoteHost, remotePort)
+                        setFwdLocalPort('')
+                        setFwdRemoteHostPort('')
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Show>
+          </div>
         </Show>
 
         {/* Pipeline status indicator */}

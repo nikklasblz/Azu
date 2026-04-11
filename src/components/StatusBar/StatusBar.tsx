@@ -3,7 +3,7 @@ import { gridStore } from '../../stores/grid'
 import { themeStore } from '../../stores/theme'
 import { env } from '../../lib/tauri-commands'
 import { updateAvailable, updateVersion, downloading, progress, readyToRestart, updateError, downloadAndInstall, restartApp } from '../../stores/updater'
-import { connections } from '../../stores/ssh'
+import { connections, forwards } from '../../stores/ssh'
 
 interface ToolStatus {
   name: string
@@ -48,6 +48,13 @@ const StatusBar: Component = () => {
       <Show when={sshCount() > 0}>
         <span style={{ color: 'var(--azu-accent)' }}>SSH: {sshCount()}</span>
       </Show>
+      <For each={forwards()}>
+        {(fwd) => (
+          <span style={{ color: 'var(--azu-accent)', 'font-size': '10px' }}>
+            {fwd.config.forward_type === 'local' ? 'L' : 'R'}:{fwd.config.local_port}→{fwd.config.remote_port}
+          </span>
+        )}
+      </For>
 
       {/* Environment detection */}
       <div class="relative" ref={panelRef}>
