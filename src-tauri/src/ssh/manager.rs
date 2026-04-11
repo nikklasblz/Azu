@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use russh::client::{self, Msg};
 use russh::{ChannelWriteHalf, Disconnect};
+use russh_sftp::client::SftpSession;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -40,6 +41,7 @@ pub struct ActiveConnection {
 pub struct SshManager {
     connections: Arc<Mutex<HashMap<String, ActiveConnection>>>,
     hosts: Arc<Mutex<Vec<SshHostConfig>>>,
+    sftp_sessions: Arc<Mutex<HashMap<String, Arc<SftpSession>>>>,
 }
 
 impl SshManager {
@@ -47,6 +49,7 @@ impl SshManager {
         Self {
             connections: Arc::new(Mutex::new(HashMap::new())),
             hosts: Arc::new(Mutex::new(Vec::new())),
+            sftp_sessions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -202,8 +205,55 @@ impl SshManager {
         Ok(conn_id)
     }
 
+    /// Open (or reuse a cached) SFTP session for the given connection id.
+    pub async fn open_sftp(&self, conn_id: &str) -> Result<Arc<SftpSession>, String> {
+        // Check cache first
+        {
+            let cache = self.sftp_sessions.lock().await;
+            if let Some(session) = cache.get(conn_id) {
+                return Ok(session.clone());
+            }
+        }
+
+        // Open a new SFTP channel while holding the connections lock.
+        // tokio::Mutex supports holding across .await points, so this is safe.
+        let channel: russh::Channel<Msg> = {
+            let conns = self.connections.lock().await;
+            let active = conns
+                .get(conn_id)
+                .ok_or_else(|| format!("Connection '{}' not found", conn_id))?;
+            active
+                .handle
+                .channel_open_session()
+                .await
+                .map_err(|e| format!("SFTP channel: {e}"))?
+        };
+
+        channel
+            .request_subsystem(true, "sftp")
+            .await
+            .map_err(|e| format!("SFTP subsystem: {e}"))?;
+
+        let sftp = SftpSession::new(channel.into_stream())
+            .await
+            .map_err(|e| format!("SFTP init: {e}"))?;
+
+        let sftp = Arc::new(sftp);
+
+        // Cache the session
+        self.sftp_sessions
+            .lock()
+            .await
+            .insert(conn_id.to_string(), sftp.clone());
+
+        Ok(sftp)
+    }
+
     /// Disconnect a connection by id.
     pub async fn disconnect(&self, conn_id: &str, app: AppHandle) -> Result<(), String> {
+        // Clean up any cached SFTP session first
+        self.sftp_sessions.lock().await.remove(conn_id);
+
         let active = self
             .connections
             .lock()
