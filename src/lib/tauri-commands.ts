@@ -95,4 +95,18 @@ export const ssh = {
   resize: (connectionId: string, rows: number, cols: number): Promise<void> =>
     invoke('ssh_resize', { connectionId, rows, cols }),
   listConnections: (): Promise<any[]> => invoke('ssh_list_connections'),
+
+  // SFTP
+  sftpListDir: (connectionId: string, path: string): Promise<any[]> =>
+    invoke('sftp_list_dir', { connectionId, path }),
+  sftpDownload: (connectionId: string, remotePath: string, localPath: string): Promise<string> =>
+    invoke('sftp_download', { connectionId, remotePath, localPath }),
+  sftpUpload: (connectionId: string, localPath: string, remotePath: string): Promise<string> =>
+    invoke('sftp_upload', { connectionId, localPath, remotePath }),
+  sftpMkdir: (connectionId: string, path: string): Promise<void> =>
+    invoke('sftp_mkdir', { connectionId, path }),
+  sftpRemove: (connectionId: string, path: string): Promise<void> =>
+    invoke('sftp_remove', { connectionId, path }),
+  sftpRename: (connectionId: string, oldPath: string, newPath: string): Promise<void> =>
+    invoke('sftp_rename', { connectionId, oldPath, newPath }),
 }
