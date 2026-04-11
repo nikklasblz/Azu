@@ -1,0 +1,16 @@
+{
+  "name": "azu-license-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.0.0",
+    "stripe": "^14.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
