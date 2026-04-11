@@ -4,6 +4,7 @@ pub mod connection;
 pub mod session;
 pub mod manager;
 pub mod sftp;
+pub mod forwarding;
 
 pub use manager::SshManager;
 pub use types::*;
