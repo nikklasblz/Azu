@@ -1,4 +1,5 @@
 import { Component, Show, For, createSignal } from 'solid-js'
+import SftpPanel from './SftpPanel'
 import { GridNode, splitHorizontal, splitVertical, removeCell, setCellLabel, setCellTheme, setCellCwd, swapCells, gridStore, findAllLeaves } from '../../stores/grid'
 import { getAvailableThemes, themeStore, bgColor, toolbarColor } from '../../stores/theme'
 import { dialog, pty } from '../../lib/tauri-commands'
@@ -23,6 +24,7 @@ const GridCell: Component<GridCellProps> = (props) => {
   const [showSwapMenu, setShowSwapMenu] = createSignal(false)
   const [showPipelineConfig, setShowPipelineConfig] = createSignal(false)
   const [showSshPicker, setShowSshPicker] = createSignal(false)
+  const [showSftp, setShowSftp] = createSignal(false)
 
   const paneStatus = () => pipelineStore.paneStates[props.node.id]?.status
 
@@ -116,7 +118,7 @@ const GridCell: Component<GridCellProps> = (props) => {
         ...(sshStatus() === 'connected' ? { 'border-top': '2px solid #3fb950' } : {}),
       }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false); setShowSshPicker(false) }}
+      onMouseLeave={() => { setHovered(false); setShowThemeMenu(false); setShowLaunchMenu(false); setShowSwapMenu(false); setShowPipelineConfig(false); setShowSshPicker(false); setShowSftp(false) }}
     >
       {/* Cell toolbar */}
       <div
@@ -264,6 +266,24 @@ const GridCell: Component<GridCellProps> = (props) => {
             />
           </Show>
         </div>
+
+        {/* SFTP button — only when SSH connected */}
+        <Show when={sshStatus() === 'connected'}>
+          <button
+            class="w-7 h-6 flex items-center justify-center rounded hover:bg-white/6"
+            onClick={() => setShowSftp(!showSftp())}
+            title="SFTP file browser"
+            style={{
+              color: showSftp() ? colors().accent : toolbarColor(colors()),
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M1 2h4l1.5 1.5H11v6.5H1V2z" />
+              <line x1="4" y1="7" x2="8" y2="7" />
+              <line x1="6" y1="5" x2="6" y2="9" />
+            </svg>
+          </button>
+        </Show>
 
         {/* Pipeline status indicator */}
         <Show when={paneStatus()}>
@@ -432,7 +452,7 @@ const GridCell: Component<GridCellProps> = (props) => {
       </div>
 
       {/* Terminal — auto-request PTY if missing */}
-      <div class="flex-1 overflow-hidden">
+      <div class="flex-1 overflow-hidden relative">
         <Show when={props.ptyId} fallback={
           <div class="flex items-center justify-center h-full" style={{ color: colors().textMuted }}>
             <span class="text-xs animate-pulse">Starting terminal...</span>
@@ -442,6 +462,15 @@ const GridCell: Component<GridCellProps> = (props) => {
             ptyId={props.ptyId!}
             themeId={props.node.themeId}
             sshConnectionId={props.node.ssh?.connectionId}
+          />
+        </Show>
+
+        {/* SFTP Panel overlay */}
+        <Show when={showSftp() && props.node.ssh}>
+          <SftpPanel
+            connectionId={props.node.ssh!.connectionId}
+            colors={colors()}
+            onClose={() => setShowSftp(false)}
           />
         </Show>
       </div>
