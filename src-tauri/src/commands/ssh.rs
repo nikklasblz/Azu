@@ -1,9 +1,11 @@
 // Azu — SSH Tauri Commands
-// Eight async commands exposing SSH host management and session control.
+// Async commands exposing SSH host management, session control, and SFTP operations.
 
 use tauri::{AppHandle, State};
+use uuid::Uuid;
 
 use crate::ssh::manager::SshManager;
+use crate::ssh::sftp::{self, FileEntry};
 use crate::ssh::types::{SshConnectionInfo, SshHostConfig};
 
 // ---------------------------------------------------------------------------
@@ -97,4 +99,85 @@ pub async fn ssh_list_connections(
     manager: State<'_, SshManager>,
 ) -> Result<Vec<SshConnectionInfo>, String> {
     Ok(manager.list_connections().await)
+}
+
+// ---------------------------------------------------------------------------
+// SFTP commands
+// ---------------------------------------------------------------------------
+
+/// List a remote directory, returning sorted file entries.
+#[tauri::command]
+pub async fn sftp_list_dir(
+    connection_id: String,
+    path: String,
+    manager: State<'_, SshManager>,
+) -> Result<Vec<FileEntry>, String> {
+    let sftp = manager.open_sftp(&connection_id).await?;
+    sftp::list_dir(&sftp, &path).await
+}
+
+/// Download a remote file to a local path.
+/// Returns the transfer_id used for `sftp-progress-{transfer_id}` events.
+#[tauri::command]
+pub async fn sftp_download(
+    connection_id: String,
+    remote_path: String,
+    local_path: String,
+    app: AppHandle,
+    manager: State<'_, SshManager>,
+) -> Result<String, String> {
+    let sftp = manager.open_sftp(&connection_id).await?;
+    let transfer_id = Uuid::new_v4().to_string();
+    sftp::download(&sftp, &remote_path, &local_path, &app, &transfer_id).await?;
+    Ok(transfer_id)
+}
+
+/// Upload a local file to a remote path.
+/// Returns the transfer_id used for `sftp-progress-{transfer_id}` events.
+#[tauri::command]
+pub async fn sftp_upload(
+    connection_id: String,
+    local_path: String,
+    remote_path: String,
+    app: AppHandle,
+    manager: State<'_, SshManager>,
+) -> Result<String, String> {
+    let sftp = manager.open_sftp(&connection_id).await?;
+    let transfer_id = Uuid::new_v4().to_string();
+    sftp::upload(&sftp, &local_path, &remote_path, &app, &transfer_id).await?;
+    Ok(transfer_id)
+}
+
+/// Create a remote directory.
+#[tauri::command]
+pub async fn sftp_mkdir(
+    connection_id: String,
+    path: String,
+    manager: State<'_, SshManager>,
+) -> Result<(), String> {
+    let sftp = manager.open_sftp(&connection_id).await?;
+    sftp::mkdir(&sftp, &path).await
+}
+
+/// Remove a remote file or directory.
+#[tauri::command]
+pub async fn sftp_remove(
+    connection_id: String,
+    path: String,
+    manager: State<'_, SshManager>,
+) -> Result<(), String> {
+    let sftp = manager.open_sftp(&connection_id).await?;
+    sftp::remove(&sftp, &path).await
+}
+
+/// Rename or move a remote file or directory.
+#[tauri::command]
+pub async fn sftp_rename(
+    connection_id: String,
+    old_path: String,
+    new_path: String,
+    manager: State<'_, SshManager>,
+) -> Result<(), String> {
+    let sftp = manager.open_sftp(&connection_id).await?;
+    sftp::rename(&sftp, &old_path, &new_path).await
 }
