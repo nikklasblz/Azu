@@ -117,4 +117,7 @@ export const ssh = {
     invoke('ssh_remove_forward', { connectionId, forwardId }),
   listForwards: (): Promise<any[]> =>
     invoke('ssh_list_forwards'),
+
+  // AWS cloud discovery
+  awsLightsailDiscover: (): Promise<any[]> => invoke('aws_lightsail_discover'),
 }

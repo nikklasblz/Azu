@@ -34,6 +34,8 @@ rfd = "0.15"
 russh = { version = "0.54", default-features = false, features = ["flate2", "ring"] }
 russh-sftp = "2"
 tokio-util = { version = "0.7", features = ["rt"] }
+aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls"] }
+aws-sdk-lightsail = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }

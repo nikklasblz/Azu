@@ -72,6 +72,7 @@ pub fn run() {
             commands::ssh::ssh_add_forward,
             commands::ssh::ssh_remove_forward,
             commands::ssh::ssh_list_forwards,
+            commands::ssh::aws_lightsail_discover,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -15,6 +15,11 @@ const SshHostPicker: Component<SshHostPickerProps> = (props) => {
   const [password, setPassword] = createSignal('')
   const [error, setError] = createSignal<string | null>(null)
 
+  // AWS discovery state
+  const [awsHosts, setAwsHosts] = createSignal<SshHost[]>([])
+  const [awsLoading, setAwsLoading] = createSignal(false)
+  const [awsError, setAwsError] = createSignal('')
+
   // Add new host form state
   const [showAddForm, setShowAddForm] = createSignal(false)
   const [newHost, setNewHost] = createSignal('')
@@ -222,13 +227,64 @@ const SshHostPicker: Component<SshHostPickerProps> = (props) => {
         </For>
       </Show>
 
-      <Show when={hosts().length === 0}>
+      <Show when={hosts().length === 0 && awsHosts().length === 0}>
         <div style={{ padding: '8px 12px', color: props.colors.textMuted, 'font-size': '11px' }}>
           No hosts found
         </div>
       </Show>
 
+      {/* AWS Lightsail hosts */}
+      <Show when={awsHosts().length > 0}>
+        <Show when={hosts().length > 0}>
+          <div style={{ height: '1px', background: props.colors.border, margin: '4px 0' }} />
+        </Show>
+        <div style={{ padding: '2px 12px', color: props.colors.textMuted, 'font-size': '10px' }}>
+          AWS Lightsail
+        </div>
+        <For each={awsHosts()}>
+          {(host) => <HostRow host={host} />}
+        </For>
+      </Show>
+
       {/* Divider */}
+      <div style={{ height: '1px', background: props.colors.border, margin: '4px 0' }} />
+
+      {/* Scan AWS Lightsail */}
+      <button
+        onClick={async () => {
+          setAwsLoading(true)
+          setAwsError('')
+          try {
+            const { ssh: sshCmd } = await import('../../lib/tauri-commands')
+            const instances = await sshCmd.awsLightsailDiscover()
+            setAwsHosts(instances)
+          } catch (e: any) {
+            setAwsError(String(e))
+          }
+          setAwsLoading(false)
+        }}
+        disabled={awsLoading()}
+        style={{
+          width: '100%',
+          padding: '4px 6px',
+          background: 'transparent',
+          border: `1px dashed ${props.colors.border}`,
+          'border-radius': '3px',
+          color: props.colors.accent,
+          'font-size': '10px',
+          cursor: 'pointer',
+          'margin-top': '4px',
+          opacity: awsLoading() ? '0.5' : '1',
+        }}
+      >
+        {awsLoading() ? 'Scanning...' : '☁ Scan AWS Lightsail'}
+      </button>
+
+      <Show when={awsError()}>
+        <div style={{ padding: '2px 6px', color: props.colors.error, 'font-size': '9px' }}>{awsError()}</div>
+      </Show>
+
+      {/* Divider before Add new host */}
       <div style={{ height: '1px', background: props.colors.border, margin: '4px 0' }} />
 
       {/* Add new host */}

@@ -216,3 +216,13 @@ pub async fn ssh_list_forwards(
 ) -> Result<Vec<ForwardStatus>, String> {
     Ok(manager.list_forwards().await)
 }
+
+// ---------------------------------------------------------------------------
+// AWS cloud discovery
+// ---------------------------------------------------------------------------
+
+/// Discover running AWS Lightsail instances using ambient AWS credentials.
+#[tauri::command]
+pub async fn aws_lightsail_discover() -> Result<Vec<SshHostConfig>, String> {
+    crate::ssh::cloud_aws::discover_lightsail_instances().await
+}
