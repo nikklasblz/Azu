@@ -13,6 +13,7 @@ import { initKeybindings } from './lib/keybindings'
 import { initPipelineListeners } from './stores/pipeline'
 import { initSshListeners } from './stores/ssh'
 import { initUpdater } from './stores/updater'
+import { checkLicense } from './stores/license'
 import { loadSnippets } from './components/TitleBar/SnippetPicker'
 import './styles/global.css'
 
@@ -74,6 +75,7 @@ const App: Component = () => {
     initPipelineListeners()
     initSshListeners()
     initUpdater()
+    checkLicense()
     await loadPresetsFromDisk()
     await loadSnippets()
 

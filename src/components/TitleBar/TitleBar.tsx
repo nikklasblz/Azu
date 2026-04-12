@@ -2,9 +2,11 @@ import { Component, createSignal, Show, For, onMount, onCleanup, createMemo, cre
 import PresetSwitcher from '../Grid/PresetSwitcher'
 import ThemePicker from '../ThemePicker/ThemePicker'
 import SnippetPicker from './SnippetPicker'
+import LicensePanel from '../Settings/LicensePanel'
 import { win } from '../../lib/tauri-commands'
 import { setBgAlpha, themeStore } from '../../stores/theme'
 import { pipelineStore } from '../../stores/pipeline'
+import { proEnabled } from '../../stores/license'
 import { findAllLeaves, gridStore } from '../../stores/grid'
 
 interface TitleBarProps {
@@ -26,6 +28,7 @@ const TitleBar: Component<TitleBarProps> = (props) => {
   const [pinned, setPinned] = createSignal(false)
   const [opacity, setOpacity] = createSignal(100)
   const [showLaunch, setShowLaunch] = createSignal(false)
+  const [showLicense, setShowLicense] = createSignal(false)
   const [elapsed, setElapsed] = createSignal(0)
 
   const hasPipelineConfig = () => {
@@ -204,6 +207,28 @@ const TitleBar: Component<TitleBarProps> = (props) => {
 
       <div class="flex-1" data-tauri-drag-region />
 
+      {/* Pro badge */}
+      <Show
+        when={proEnabled()}
+        fallback={
+          <button
+            class="px-2 py-0.5 text-[10px] rounded"
+            style={{ background: 'var(--azu-accent)', color: 'var(--azu-surface)', cursor: 'pointer', border: 'none' }}
+            onClick={() => setShowLicense(true)}
+          >
+            PRO
+          </button>
+        }
+      >
+        <span
+          class="px-1.5 py-0.5 text-[9px] rounded cursor-pointer"
+          style={{ background: 'var(--azu-accent)', color: 'var(--azu-surface)', opacity: '0.7' }}
+          onClick={() => setShowLicense(true)}
+        >
+          PRO
+        </span>
+      </Show>
+
       {/* Opacity — inline slider, always visible */}
       <div class="flex items-center gap-1 mr-1">
         <input
@@ -262,6 +287,12 @@ const TitleBar: Component<TitleBarProps> = (props) => {
           <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>
         </button>
       </div>
+      <Show when={showLicense()}>
+        <LicensePanel
+          colors={themeStore.themes[themeStore.activeId]?.colors}
+          onClose={() => setShowLicense(false)}
+        />
+      </Show>
     </header>
   )
 }

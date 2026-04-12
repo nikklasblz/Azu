@@ -82,6 +82,12 @@ export const pipeline = {
   getState: (): Promise<any> => invoke('pipeline_get_state'),
 }
 
+export const license = {
+  activate: (key: string): Promise<any> => invoke('activate_license', { key }),
+  getStatus: (): Promise<any> => invoke('get_license_status'),
+  deactivate: (): Promise<void> => invoke('deactivate_license'),
+}
+
 export const ssh = {
   listHosts: (): Promise<any[]> => invoke('ssh_list_hosts'),
   addHost: (host: any): Promise<any[]> => invoke('ssh_add_host', { host }),

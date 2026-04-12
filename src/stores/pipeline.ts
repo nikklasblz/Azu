@@ -1,9 +1,8 @@
-import { createSignal } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { listen } from '@tauri-apps/api/event'
+import { proEnabled } from './license'
 
-const [proEnabled, setProEnabled] = createSignal(true) // true for dev/testing, flip to false for production
-export { proEnabled, setProEnabled }
+export { proEnabled }
 
 interface PaneRunState {
   status: 'waiting' | 'running' | 'done' | 'error'
