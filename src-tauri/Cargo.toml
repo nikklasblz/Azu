@@ -28,6 +28,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 toml = "0.8"
 notify = "7"
 base64 = "0.22"
+ed25519-dalek = { version = "2", features = ["pkcs8", "rand_core"] }
 uuid = { version = "1", features = ["v4"] }
 dirs = "5"
 rfd = "0.15"
@@ -46,6 +47,9 @@ codegen-units = 1
 lto = true
 opt-level = 2
 strip = true
+
+[dev-dependencies]
+rand = "0.8"
 
 [profile.dev]
 incremental = true

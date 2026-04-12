@@ -4,6 +4,7 @@
 
 mod clipboard;
 mod commands;
+mod license;
 mod pipeline;
 mod pty;
 mod ssh;
@@ -73,6 +74,9 @@ pub fn run() {
             commands::ssh::ssh_remove_forward,
             commands::ssh::ssh_list_forwards,
             commands::ssh::aws_lightsail_discover,
+            commands::license::activate_license,
+            commands::license::get_license_status,
+            commands::license::deactivate_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

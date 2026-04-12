@@ -6,3 +6,4 @@ pub mod dialog;
 pub mod env;
 pub mod pipeline;
 pub mod ssh;
+pub mod license;
